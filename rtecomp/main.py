@@ -24,6 +24,7 @@ from parse import * # pip install parse
 
 def convertInterfaceToBoolDict(root):
     alphabet = {}
+    keyLength = 0 # This will determine the length of the key that we will use to capture the dictionary
     for alphabetItem in root.iter("Interface"):
         for child in alphabetItem:
             if child.get("Type") != "bool":
@@ -31,9 +32,10 @@ def convertInterfaceToBoolDict(root):
                 exit()
             if child.get("Constant") == "false":
                 print("Added ", child.get("Name"))
+                keyLength += 1
                 alphabet[child.get("Name")] = None
 
-    return alphabet
+    return alphabet, keyLength
 
 def parse_validateNoBrackets(conditionStr):
     if conditionStr.__contains__("(") or conditionStr.__contains__(")"):
@@ -57,29 +59,41 @@ def parse_isAND(conditionStr):
         return True
 
 def areAnyNone(unwound):
-    for any in unwound:
+    for anyK in unwound:
+        any = unwound[anyK]
         for k in any:
             if any[k] is None:
                 return True
     return False
 
+def getKey(alphabetOption):
+    key = ""
+    for k in alphabetOption:
+        if alphabetOption[k] == True:
+            key += "1"
+        elif alphabetOption[k] == False:
+            key += "0"
+        else:
+            key += "2"
+    return key
+
 def unwindConditions(conditions):
     print('Unwinding ', conditions)
-    unwound = []
-    for condition in conditions:
+    unwound = {}
+    for conditionKey in conditions:
+        condition = conditions[conditionKey]
         for k in condition:
-            # print(k, condition[k])
             if condition[k] is None:
                 trueOption = condition.copy()
                 trueOption[k] = True
                 falseOption = condition.copy()
                 falseOption[k] = False
-                unwound.append(trueOption)
-                unwound.append(falseOption)
-    print("Unwound to", unwound)
-    print("Any more to unwind??", areAnyNone(unwound))
+                unwound[getKey(trueOption)] = trueOption
+                unwound[getKey(falseOption)] = falseOption
+    # print("Any more to unwind??", areAnyNone(unwound))
     while areAnyNone(unwound) == True:
         unwound = unwindConditions(unwound)
+    print("Unwound to", unwound)
     return unwound
 
 def addIfNotPresent(existing, new):
@@ -94,15 +108,13 @@ def addIfNotPresent(existing, new):
 
 def parse_singleSignal(signalString):
     if signalString[0] == "!":
-        print("False", signalString)
         return {"signal":str(signalString[1:]).upper(),"value": False}
     else:
-        print("True", signalString)
         return {"signal":str(signalString).upper(),"value": True}
 
-def parse_noBracketsCondition(conditionStr, alphabetTemplate):
+def parse_noBracketsCondition(conditionStr, alphabetTemplate, alphabetKeyLength):
     assert(parse_validateNoBrackets(conditionStr))
-    conditions = []
+    conditions = {}
     a = parse("{}and{}", conditionStr.lower())
     # print(a)
     if a is not None:
@@ -114,7 +126,7 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
         condition[LHS["signal"]] = LHS["value"]
         condition[RHS["signal"]] = RHS["value"]
         # print(conditionStr, "becomes", condition)
-        conditions = addIfNotPresent(conditions, unwindConditions([condition]))
+        conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
         # print(conditions)
 
     else:
@@ -128,20 +140,14 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
         LHS = parse_singleSignal(a[0])
         condition1 = alphabetTemplate.copy()
         condition1[LHS["signal"]] = LHS["value"]
-        print(len(conditions), conditions)
-        conditions = addIfNotPresent(conditions, unwindConditions([condition1]))
-        print(len(conditions), conditions)
-        conditions = addIfNotPresent(conditions, unwindConditions([condition1]))
-        print(len(conditions), conditions)
-        conditions = addIfNotPresent(conditions, unwindConditions([condition1]))
-        print(len(conditions), conditions)
+        conditions = {**conditions, **unwindConditions({getKey(condition1): condition1})}
 
         RHS = parse_singleSignal(a[1])
         condition2 = alphabetTemplate.copy()
         condition2[RHS["signal"]] = RHS["value"]
-        conditions = addIfNotPresent(conditions, unwindConditions([condition2]))
+        conditions = {**conditions, **unwindConditions({getKey(condition2): condition2})}
     
-    print(conditionStr, "becomes", conditions)
+    print(conditionStr, "becomes", conditions, "\n\n")
     return conditions
 
 def getCharacterRepeated(count, char):
@@ -150,7 +156,7 @@ def getCharacterRepeated(count, char):
     return repeated
 
 
-def convertConditionToListOfBools(conditionString, alphabetTemplate):
+def convertConditionToListOfBools(conditionString, alphabetTemplate, alphabetKeyLength):
     print(alphabetTemplate)
     print(conditionString)
 
@@ -181,11 +187,12 @@ def convertConditionToListOfBools(conditionString, alphabetTemplate):
         topCondition = parse(formatString, b[0])
     else:
         print(b, b[0])
-        topCondition = parse_noBracketsCondition(b[0], alphabetTemplate)
+        topCondition = parse_noBracketsCondition(b[0], alphabetTemplate, alphabetKeyLength)
 
     print(topCondition)
 
     # Condition is either "AND" or "OR"
+    print("top condition: ", topCondition)
     condition = topCondition[1].lower()
     if (condition == "or"):
         # OR means TWO transitions to violation
@@ -223,7 +230,7 @@ root = tree.getroot()
 # its memory location
 print("Enforced Function: ", root.attrib.get("Name"))
 
-alphabetTemplate = convertInterfaceToBoolDict(root)
+alphabetTemplate, alphabetKeyLength = convertInterfaceToBoolDict(root)
 
 # root.tag
 # root.attrib
@@ -237,5 +244,5 @@ for policy in root.iter("Policy"):
     for transition in policy.iter('PTransition'):
         for child in transition.iter('Recover'):
             print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
-            convertConditionToListOfBools(transition.find("Condition").text, alphabetTemplate)
+            convertConditionToListOfBools(transition.find("Condition").text, alphabetTemplate, alphabetKeyLength)
             exit()
