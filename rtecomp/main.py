@@ -112,7 +112,24 @@ def parse_singleSignal(signalString):
     else:
         return {"signal":str(signalString).upper(),"value": True}
 
-def parse_noBracketsCondition(conditionStr, alphabetTemplate, alphabetKeyLength):
+def isClockCondition(conditionString):
+    # In non-valued enforcement, we can assume any condition like <= < > >=
+    if ("<" in conditionString) or ("<=" in conditionString) or (">" in conditionString) or (">=" in conditionString):
+        return True
+    else:
+        return False
+
+def isSingleSignal(conditionString, alphabetTemplate):
+    if conditionString[0] == "!":
+        conditionString = conditionString[1:]
+
+    for option in alphabetTemplate:
+        print(conditionString, option, alphabetTemplate[option])
+        if conditionString == option:
+            return True
+    return False
+
+def parse_noBracketsCondition(conditionStr, alphabetTemplate):
     assert(parse_validateNoBrackets(conditionStr))
     conditions = {}
     a = parse("{}and{}", conditionStr.lower())
@@ -134,7 +151,21 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate, alphabetKeyLength)
         a = parse("{}or{}", conditionStr.lower())
         if a is None:
             print("Problem parsing no brackets condition: ", conditionStr)
-            assert(False)
+            if isClockCondition(conditionStr):
+                print("Clock condition with nothing else.")
+                any = alphabetTemplate.copy()
+                conditions = {**conditions, **unwindConditions({getKey(any): any})}
+                return conditions
+            elif isSingleSignal(conditionStr, alphabetTemplate):
+                print("Single condition: ", conditionStr)
+                single = parse_singleSignal(conditionStr)
+                condition = alphabetTemplate.copy()
+                condition[single["signal"]] = single["value"]
+                conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
+                return conditions
+
+            else:
+                assert(False)
         print(a[0], "OR", a[1])
 
         LHS = parse_singleSignal(a[0])
@@ -147,7 +178,7 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate, alphabetKeyLength)
         condition2[RHS["signal"]] = RHS["value"]
         conditions = {**conditions, **unwindConditions({getKey(condition2): condition2})}
     
-    print(conditionStr, "becomes", conditions, "\n\n")
+    print(conditionStr, "becomes", conditions)
     return conditions
 
 def getCharacterRepeated(count, char):
@@ -155,9 +186,21 @@ def getCharacterRepeated(count, char):
     for number in range(0, count) : repeated = repeated + str(char)
     return repeated
 
+def getIntersection(first, second):
+    intersection = {}
+    for f in first:
+        if f in second:
+            # print("Found a match")
+            intersection[f] = second[f]
+        # else:
+            # print("Found NO match", first[f])
+    print("First: ", first)
+    print("Second: ", second)
+    print("Intersection: ", intersection)
+    return intersection
 
-def convertConditionToListOfBools(conditionString, alphabetTemplate, alphabetKeyLength):
-    print(alphabetTemplate)
+def convertConditionToDictOfBools(conditionString, alphabetTemplate):
+    # print(alphabetTemplate)
     print(conditionString)
 
     # Remove spaces
@@ -167,16 +210,21 @@ def convertConditionToListOfBools(conditionString, alphabetTemplate, alphabetKey
     # Remove topmost brackets
     b = parse("({})", a)
     count = 0
-    while True:
-        # Keep going till all top brackets gone
-        if parse("({})", b[0]) is not None:
-            print("Part:", b[0])
-            b = parse("({})", b[0])
-            count += 1
-        else:
-            break
+    if b is not None:
+        while True:
+            # Keep going till all top brackets gone
+            if parse("({})", b[0]) is not None:
+                print("Part:", b[0])
+                b = parse("({})", b[0])
+                count += 1
+            else:
+                break
     
-    print("Top brackets removed:", count, b[0])
+        print("Top brackets removed:", count, b[0])
+    else: 
+        b=[]
+        print("No brackets to remove..?", a)
+        b.append(a)
 
     if count > 0:
         # Separate into LHS, condition and RHS
@@ -185,32 +233,38 @@ def convertConditionToListOfBools(conditionString, alphabetTemplate, alphabetKey
         formatString = "{}" + getCharacterRepeated(count, ")") + "{}" + getCharacterRepeated(count, "(") + "{}"
         print(formatString)
         topCondition = parse(formatString, b[0])
-    else:
-        print(b, b[0])
-        topCondition = parse_noBracketsCondition(b[0], alphabetTemplate, alphabetKeyLength)
 
-    print(topCondition)
-
-    # Condition is either "AND" or "OR"
-    print("top condition: ", topCondition)
-    condition = topCondition[1].lower()
-    if (condition == "or"):
-        # OR means TWO transitions to violation
-        print("OR")
+        print(topCondition)
+        
         # TODO: Recursively find all transitions - keep going till you have ONLY ANDS in a list/table
+
         LHS = topCondition[0]
         RHS = topCondition[2]
 
-    elif (condition == "and"):
-        # AND means single transition
-        print("AND")
+        # print("LHS:", LHS, "RHS:", RHS)
+        # L = parse_noBracketsCondition(LHS, alphabetTemplate)
+        L = convertConditionToDictOfBools("("+LHS+")", alphabetTemplate)
+        # R = parse_noBracketsCondition(RHS, alphabetTemplate)
+        R = convertConditionToDictOfBools("("+RHS+")", alphabetTemplate)
 
+        # Condition is either "AND" or "OR"
+        print("top condition: ", topCondition)
+        condition = topCondition[1].lower()
+        if (condition == "or"):
+            # OR means APPEND sets of conditions for transition to violation
+            print("OR")
+            topCondition = {**L, **R}
+        elif (condition == "and"):
+            # AND means INTERSECTION of sets of conditions for transition to violation
+            print("AND")
+            topCondition = getIntersection(L, R)
 
-    LHS = topCondition[0]
-    RHS = topCondition[2]
-    print(LHS, parse_isOR(LHS), parse_isAND(LHS))
-    print(RHS, parse_isOR(RHS), parse_isAND(RHS))
-    return
+    else:
+        print(b, b[0])
+        topCondition = parse_noBracketsCondition(b[0], alphabetTemplate)
+
+    print("Returning: ", topCondition)
+    return topCondition
 
 ###########################################################################
 
@@ -244,5 +298,5 @@ for policy in root.iter("Policy"):
     for transition in policy.iter('PTransition'):
         for child in transition.iter('Recover'):
             print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
-            convertConditionToListOfBools(transition.find("Condition").text, alphabetTemplate, alphabetKeyLength)
-            exit()
+            convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
+            input("Press any key to continue.")
