@@ -140,8 +140,10 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
         LHS = parse_singleSignal(a[0])
         RHS = parse_singleSignal(a[1])
         condition = alphabetTemplate.copy()
-        condition[LHS["signal"]] = LHS["value"]
-        condition[RHS["signal"]] = RHS["value"]
+        if not isClockCondition(LHS["signal"]):
+            condition[LHS["signal"]] = LHS["value"]
+        if not isClockCondition(RHS["signal"]):
+            condition[RHS["signal"]] = RHS["value"]
         # print(conditionStr, "becomes", condition)
         conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
         # print(conditions)
@@ -170,12 +172,14 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
 
         LHS = parse_singleSignal(a[0])
         condition1 = alphabetTemplate.copy()
-        condition1[LHS["signal"]] = LHS["value"]
+        if not isClockCondition(LHS["signal"]):
+            condition1[LHS["signal"]] = LHS["value"]
         conditions = {**conditions, **unwindConditions({getKey(condition1): condition1})}
 
         RHS = parse_singleSignal(a[1])
         condition2 = alphabetTemplate.copy()
-        condition2[RHS["signal"]] = RHS["value"]
+        if not isClockCondition(RHS["signal"]):
+            condition2[RHS["signal"]] = RHS["value"]
         conditions = {**conditions, **unwindConditions({getKey(condition2): condition2})}
     
     print(conditionStr, "becomes", conditions)
