@@ -154,9 +154,9 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
         if a is None:
             print("Problem parsing no brackets condition: ", conditionStr)
             if isClockCondition(conditionStr):
-                print("Clock condition with nothing else.")
-                any = alphabetTemplate.copy()
-                conditions = {**conditions, **unwindConditions({getKey(any): any})}
+                print("Clock condition with nothing else. Any signal will avoid violation transition.")
+                # any = alphabetTemplate.copy()
+                # conditions = {**conditions, **unwindConditions({getKey(any): any})}
                 return conditions
             elif isSingleSignal(conditionStr, alphabetTemplate):
                 print("Single condition: ", conditionStr)
@@ -270,6 +270,22 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
     print("Returning: ", topCondition)
     return topCondition
 
+def getAcceptableTransitions(violationConditions, alphabetTemplate):
+    any = alphabetTemplate.copy()
+    acceptableTransitions = {}
+    allConditions = unwindConditions({getKey(any): any})
+    for condition in allConditions:
+        print(condition, violationConditions)
+        if condition in violationConditions:
+            pass
+        else:
+            acceptableTransitions[condition] = allConditions[condition]
+
+    print("Acceptable Transitions: ", acceptableTransitions)
+    assert(len(acceptableTransitions) + len(violationConditions) == len(allConditions))
+    return acceptableTransitions
+
+
 ###########################################################################
 
 import xml.etree.ElementTree as ET
@@ -302,5 +318,8 @@ for policy in root.iter("Policy"):
     for transition in policy.iter('PTransition'):
         for child in transition.iter('Recover'):
             print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
-            convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
+            violationConditions = convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
+            print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
+            print("Violation Conditions: ", violationConditions)
+            acceptable = getAcceptableTransitions(violationConditions, alphabetTemplate)
             input("Press any key to continue.")
