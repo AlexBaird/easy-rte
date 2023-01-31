@@ -312,9 +312,11 @@ alphabetTemplate, alphabetKeyLength = convertInterfaceToBoolDict(root)
 #     print(child.tag, child.attrib)
 #     for childchild in child:
 #         print("\t", childchild.tag, childchild.attrib)
+allViolationTransitions = []
 
 # Find each policies violating transitions
 for policy in root.iter("Policy"):
+    policyViolationCount = 0
     for transition in policy.iter('PTransition'):
         for child in transition.iter('Recover'):
             print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
@@ -322,4 +324,18 @@ for policy in root.iter("Policy"):
             print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
             print("Violation Conditions: ", violationConditions)
             acceptable = getAcceptableTransitions(violationConditions, alphabetTemplate)
-            input("Press any key to continue.")
+
+            # Put each violating signal set into table, [policy, reference, location, A, B, C, acceptable resolutions] 
+            policyViolationCount += 1
+            allViolationTransitions.append({
+                "policy":policy.attrib.get("Name"),
+                "violationRef":policyViolationCount,
+                "location":transition.find("Source").text,
+                "violationConditionString":transition.find("Condition").text,
+                "violatingConditions":violationConditions,
+                "acceptableConditions":acceptable
+            })
+
+            # input("Press any key to continue.")
+import pprint 
+pprint.pprint(allViolationTransitions)
