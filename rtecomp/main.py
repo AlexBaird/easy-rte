@@ -198,9 +198,9 @@ def getIntersection(first, second):
             intersection[f] = second[f]
         # else:
             # print("Found NO match", first[f])
-    print("First: ", first)
-    print("Second: ", second)
-    print("Intersection: ", intersection)
+    # print("First: ", first)
+    # print("Second: ", second)
+    # print("Intersection: ", intersection)
     return intersection
 
 def convertConditionToDictOfBools(conditionString, alphabetTemplate):
@@ -325,17 +325,54 @@ for policy in root.iter("Policy"):
             print("Violation Conditions: ", violationConditions)
             acceptable = getAcceptableTransitions(violationConditions, alphabetTemplate)
 
-            # Put each violating signal set into table, [policy, reference, location, A, B, C, acceptable resolutions] 
-            policyViolationCount += 1
-            allViolationTransitions.append({
-                "policy":policy.attrib.get("Name"),
-                "violationRef":policyViolationCount,
-                "location":transition.find("Source").text,
-                "violationConditionString":transition.find("Condition").text,
-                "violatingConditions":violationConditions,
-                "acceptableConditions":acceptable
-            })
+            for violatingCondition in violationConditions:
+                # Put each violating signal set into table, [policy, reference, location, A, B, C, acceptable resolutions] 
+                policyViolationCount += 1
+                allViolationTransitions.append({
+                    "policy":policy.attrib.get("Name"),
+                    "violationRef":policyViolationCount,
+                    "location":transition.find("Source").text,
+                    "violatingConditionString":transition.find("Condition").text,
+                    "violatingCondition":violatingCondition,
+                    "acceptableConditions":acceptable
+                })
 
             # input("Press any key to continue.")
+
 import pprint 
 pprint.pprint(allViolationTransitions)
+
+def addRecovery(recoveries, transitionInfo, recovery):
+    recoveries[transitionInfo["policy"]+"-"+transitionInfo["location"]+"-"+transitionInfo["violatingCondition"]] = {
+        "policy":transitionInfo["policy"],
+        "location":transitionInfo["location"],
+        "violatingConditionString":transitionInfo["violatingConditionString"],
+        "violatingCondition":transitionInfo["violatingCondition"],
+        "recovery":recovery
+    }
+    return
+
+recoveries = {}
+for violationTransition in allViolationTransitions:
+    for otherViolationTransition in allViolationTransitions:
+        if violationTransition["policy"] != otherViolationTransition["policy"]:
+            # Different policies
+            # Check I/O
+            if violationTransition["violatingCondition"] == otherViolationTransition["violatingCondition"]:
+                # Matching I/O
+                print(violationTransition["policy"], violationTransition["location"], otherViolationTransition["policy"], otherViolationTransition["location"], violationTransition["violatingConditionString"], otherViolationTransition["violatingConditionString"])
+                print(violationTransition["acceptableConditions"])
+                print(otherViolationTransition["acceptableConditions"])
+                intersectingRecoveries = getIntersection(violationTransition["acceptableConditions"], otherViolationTransition["acceptableConditions"])
+                print("Intersection", intersectingRecoveries)
+
+                for recovery in intersectingRecoveries:
+                    selectedRecovery = recovery
+                    break
+
+                print("FIRST-EDIT", selectedRecovery) # First edit is quick solution to avoid implementing minedit for now
+                
+                addRecovery(recoveries, violationTransition, selectedRecovery)
+                addRecovery(recoveries, otherViolationTransition, selectedRecovery)
+
+pprint.pprint(recoveries)
