@@ -285,7 +285,97 @@ def getAcceptableTransitions(violationConditions, alphabetTemplate):
     assert(len(acceptableTransitions) + len(violationConditions) == len(allConditions))
     return acceptableTransitions
 
+def convertBinaryStringToTextCondition(binaryString, alphabetTemplate):
+    # print(binaryString)
+    i = 0
+    condition = []
+    for k in alphabetTemplate:
+        if int(binaryString[i]) == 1:
+            condition.append(k)
+        else:
+            condition.append("!"+k)
 
+        # print(k, binaryString[i], condition)
+        i += 1
+
+    textCondition = "(" + condition[0]
+    i = 0
+    for i in range(1, len(condition)):
+        textCondition += " and " + condition[i]
+    textCondition += ")"
+
+    return textCondition
+
+def convertBinaryRecoveryStringToTextListRecovery(recoveryString, alphabetTemplate):
+    recoveryList = []
+
+    i = 0
+    for a in alphabetTemplate:
+        recoveryList.append({
+            "VarName": a,
+            "Value": recoveryString[i]
+        })
+        i += 1
+
+    return recoveryList
+
+
+def writeNewXML(root, output_filename, recoveries, alphabetTemplate):
+    from bs4 import BeautifulSoup
+
+    # Reading data from the xml file
+    with open('example/abcd/abcd.xml', 'r') as f:
+        data = f.read()
+
+    # Passing the data of the xml
+    # file to the xml parser of
+    # beautifulsoup
+    bs_data = BeautifulSoup(data, features='xml')
+
+    # Remove ALL existing violation transitions
+    for tag in bs_data.find_all("PTransition"):
+        for dest in tag.find_all("Destination", string="violation"):
+            # print(dest)
+            tag.extract()
+
+    # Add ALL NEW recoveries
+    for recovery in recoveries:
+        # print(recoveries[recovery])
+        # print(recoveries[recovery]["policy"])
+
+        policy = bs_data.find("Policy", {"Name":recoveries[recovery]["policy"]})
+        
+        pt = bs_data.new_tag("PTransition")
+        pt.append(bs_data.new_tag("Source"))
+        pt.Source.append(recoveries[recovery]["location"])
+
+        pt.append(bs_data.new_tag("Destination"))
+        pt.Destination.append("violation")
+
+        pt.append(bs_data.new_tag("Condition"))
+        pt.Condition.append(convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate))
+
+        pt.append(bs_data.new_tag("Recover"))
+
+        recoveriesText = convertBinaryRecoveryStringToTextListRecovery(recoveries[recovery]["recovery"], alphabetTemplate)
+        print(recoveriesText)
+        for recoveryText in recoveriesText:
+            # print(recoveryText["VarName"], recoveryText["Value"])
+            a = bs_data.new_tag("VarName")
+            a.append(recoveryText["VarName"])
+            pt.Recover.append(a)
+            b = bs_data.new_tag("Value")
+            b.append(recoveryText["Value"])
+            pt.Recover.append(b)
+
+        policy.Machine.append(pt)
+
+    # Output the contents of the
+    # modified xml file
+    with open(output_filename, "w") as f2:
+        f2.write(str(bs_data))
+        f2.close()
+        
 ###########################################################################
 
 import xml.etree.ElementTree as ET
@@ -293,19 +383,21 @@ import xml.etree.ElementTree as ET
 # Passing the path of the
 # xml document to enable the
 # parsing process
+filename = "example/abcd/abcd.xml"
+output_filename = "example/abcd/abcd_modified.xml"
 # tree = ET.parse('example/abc5/abc5.xml')
-tree = ET.parse('example/abcd/abcd.xml')
+tree = ET.parse(filename)
  
 # getting the parent tag of
 # the xml document
-root = tree.getroot()
+originalXMLRoot = tree.getroot()
  
 # printing the root (parent) tag
 # of the xml document, along with
 # its memory location
-print("Enforced Function: ", root.attrib.get("Name"))
+print("Enforced Function: ", originalXMLRoot.attrib.get("Name"))
 
-alphabetTemplate, alphabetKeyLength = convertInterfaceToBoolDict(root)
+alphabetTemplate, alphabetKeyLength = convertInterfaceToBoolDict(originalXMLRoot)
 
 # root.tag
 # root.attrib
@@ -316,7 +408,7 @@ alphabetTemplate, alphabetKeyLength = convertInterfaceToBoolDict(root)
 
 # Find each policies violating transitions
 policies = {}
-for policy in root.iter("Policy"):
+for policy in originalXMLRoot.iter("Policy"):
     allViolationTransitions = []
     policyViolationCount = 0
     for transition in policy.iter('PTransition'):
@@ -400,3 +492,5 @@ for policy in policies:
 import pprint
 pprint.pprint(recoveries)
 print(len(recoveries))
+
+writeNewXML(originalXMLRoot, output_filename, recoveries, alphabetTemplate)
