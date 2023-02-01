@@ -293,7 +293,8 @@ import xml.etree.ElementTree as ET
 # Passing the path of the
 # xml document to enable the
 # parsing process
-tree = ET.parse('example/abc5/abc5.xml')
+# tree = ET.parse('example/abc5/abc5.xml')
+tree = ET.parse('example/abcd/abcd.xml')
  
 # getting the parent tag of
 # the xml document
@@ -312,10 +313,11 @@ alphabetTemplate, alphabetKeyLength = convertInterfaceToBoolDict(root)
 #     print(child.tag, child.attrib)
 #     for childchild in child:
 #         print("\t", childchild.tag, childchild.attrib)
-allViolationTransitions = []
 
 # Find each policies violating transitions
+policies = {}
 for policy in root.iter("Policy"):
+    allViolationTransitions = []
     policyViolationCount = 0
     for transition in policy.iter('PTransition'):
         for child in transition.iter('Recover'):
@@ -336,11 +338,8 @@ for policy in root.iter("Policy"):
                     "violatingCondition":violatingCondition,
                     "acceptableConditions":acceptable
                 })
-
             # input("Press any key to continue.")
-
-import pprint 
-pprint.pprint(allViolationTransitions)
+    policies[policy.attrib.get("Name")] = allViolationTransitions
 
 def addRecovery(recoveries, transitionInfo, recovery):
     recoveries[transitionInfo["policy"]+"-"+transitionInfo["location"]+"-"+transitionInfo["violatingCondition"]] = {
@@ -353,26 +352,51 @@ def addRecovery(recoveries, transitionInfo, recovery):
     return
 
 recoveries = {}
-for violationTransition in allViolationTransitions:
-    for otherViolationTransition in allViolationTransitions:
-        if violationTransition["policy"] != otherViolationTransition["policy"]:
-            # Different policies
-            # Check I/O
-            if violationTransition["violatingCondition"] == otherViolationTransition["violatingCondition"]:
-                # Matching I/O
-                print(violationTransition["policy"], violationTransition["location"], otherViolationTransition["policy"], otherViolationTransition["location"], violationTransition["violatingConditionString"], otherViolationTransition["violatingConditionString"])
-                print(violationTransition["acceptableConditions"])
-                print(otherViolationTransition["acceptableConditions"])
-                intersectingRecoveries = getIntersection(violationTransition["acceptableConditions"], otherViolationTransition["acceptableConditions"])
-                print("Intersection", intersectingRecoveries)
+for policy in policies:
+    # setsToIntersect.append(policies[policy])
+    print("Policy:", policy)
+    for violatingTransition in policies[policy]:
+        # print("Transition:", violatingTransition["violatingCondition"])
+        setsToIntersect = []
+        violatingTransitionsToRecover = []
+        setsToIntersect.append(policies[policy])
+        violatingTransitionsToRecover.append(violatingTransition)
+        for otherPolicy in policies:
+            if policy != otherPolicy:
+                for otherViolatingTransition in policies[otherPolicy]:
+                    if violatingTransition["violatingCondition"] == otherViolatingTransition["violatingCondition"]:
+                        setsToIntersect.append(policies[otherPolicy])
+                        violatingTransitionsToRecover.append(otherViolatingTransition)
+        intersectingRecoveries = setsToIntersect[0][0]["acceptableConditions"]
+        # print("all: ", len(intersectingRecoveries))
+        for i in range(1, len(setsToIntersect)):
+            # print("Intersection")
+            intersectingRecoveries = getIntersection(intersectingRecoveries, setsToIntersect[i][0]["acceptableConditions"])
+        # print("intersecting: ", len(intersectingRecoveries))
+        # pprint.pprint(intersectingRecoveries)
 
-                for recovery in intersectingRecoveries:
-                    selectedRecovery = recovery
-                    break
+        # First Edit TODO: Replace with minEdit
+        selectedRecovery = None
+        for recovery in intersectingRecoveries:
+            canUse = True
+            for checkPolicy in policies:
+                if checkPolicy != policy:
+                    for checkViolatingTransition in policies[checkPolicy]:
+                        # print("Checking - ", recovery, "against", checkPolicy)
+                        if recovery == checkViolatingTransition["violatingCondition"]:
+                            canUse = False # TODO: Replace with add to list then later perform MIN calculation to select min-edit
+                            break
+            if canUse:
+                selectedRecovery = recovery
+                break
 
-                print("FIRST-EDIT", selectedRecovery) # First edit is quick solution to avoid implementing minedit for now
-                
-                addRecovery(recoveries, violationTransition, selectedRecovery)
-                addRecovery(recoveries, otherViolationTransition, selectedRecovery)
+        assert(selectedRecovery is not None)
+        print("\tSelected Recovery:", selectedRecovery, "for", violatingTransition["policy"]+"-"+violatingTransition["location"]+"-"+violatingTransition["violatingCondition"])
+        for vt in violatingTransitionsToRecover:
+            if vt["policy"]+"-"+vt["location"]+"-"+vt["violatingCondition"] not in recoveries:
+                print("\t\tAdded Recovery:", selectedRecovery, "for", vt["policy"]+"-"+vt["location"]+"-"+vt["violatingCondition"])
+                addRecovery(recoveries, vt, selectedRecovery)
 
+import pprint
 pprint.pprint(recoveries)
+print(len(recoveries))
