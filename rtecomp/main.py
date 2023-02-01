@@ -319,7 +319,6 @@ def convertBinaryRecoveryStringToTextListRecovery(recoveryString, alphabetTempla
 
     return recoveryList
 
-
 def writeNewXML(root, output_filename, recoveries, alphabetTemplate):
     from bs4 import BeautifulSoup
 
@@ -355,24 +354,28 @@ def writeNewXML(root, output_filename, recoveries, alphabetTemplate):
         pt.append(bs_data.new_tag("Condition"))
         pt.Condition.append(convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate))
 
-        pt.append(bs_data.new_tag("Recover"))
 
         recoveriesText = convertBinaryRecoveryStringToTextListRecovery(recoveries[recovery]["recovery"], alphabetTemplate)
         print(recoveriesText)
         for recoveryText in recoveriesText:
+            recoveryTag = bs_data.new_tag("Recover")
             # print(recoveryText["VarName"], recoveryText["Value"])
-            a = bs_data.new_tag("VarName")
-            a.append(recoveryText["VarName"])
-            pt.Recover.append(a)
-            b = bs_data.new_tag("Value")
-            b.append(recoveryText["Value"])
-            pt.Recover.append(b)
+            varNameToRecover = bs_data.new_tag("VarName")
+            varNameToRecover.append(recoveryText["VarName"])
+            recoveryTag.append(varNameToRecover)
+
+            varValueToRecover = bs_data.new_tag("Value")
+            varValueToRecover.append(recoveryText["Value"])
+            recoveryTag.append(varValueToRecover)
+            
+            pt.append(recoveryTag)
 
         policy.Machine.append(pt)
 
     # Output the contents of the
     # modified xml file
     with open(output_filename, "w") as f2:
+        # f2.write(str(bs_data.prettify()))
         f2.write(str(bs_data))
         f2.close()
         
