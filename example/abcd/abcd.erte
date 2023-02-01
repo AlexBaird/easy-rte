@@ -1,0 +1,32 @@
+function abcd;
+interface of abcd {
+	in bool A;  
+	in bool B;  
+	in bool C;  
+	out bool D;  
+}
+
+policy a of abcd {
+	states {
+		s0 {
+			-> s0 on (!A);
+			-> violation on (A) recover A := 0;	
+		}
+	}
+}
+policy b of abcd {
+	states {
+		s0 {
+			-> s0 on (!B);
+			-> violation on (B) recover B := 0;	
+		}
+	}
+}
+policy c of abcd {
+	states {
+		s0 {
+			-> s0 on (!C);
+			-> violation on (C) recover C := 0;	
+		}
+	}
+}
