@@ -80,6 +80,10 @@ def getKey(alphabetOption):
 def unwindConditions(conditions):
     print('Unwinding ', conditions)
     unwound = {}
+    print("At start are any more to unwind??", areAnyNone(conditions))
+    if not areAnyNone(conditions):
+        for conditionKey in conditions:
+            unwound[conditionKey] = conditions[conditionKey]
     for conditionKey in conditions:
         condition = conditions[conditionKey]
         for k in condition:
@@ -90,7 +94,7 @@ def unwindConditions(conditions):
                 falseOption[k] = False
                 unwound[getKey(trueOption)] = trueOption
                 unwound[getKey(falseOption)] = falseOption
-    # print("Any more to unwind??", areAnyNone(unwound))
+    print("Any more to unwind??", areAnyNone(unwound))
     while areAnyNone(unwound) == True:
         unwound = unwindConditions(unwound)
     print("Unwound to", unwound)
@@ -134,7 +138,7 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
     conditions = {}
     clkConditions = {}
     a = parse("{}and{}", conditionStr.lower())
-    # print(a)
+    # print("Did I find and?", a)
     if a is not None:
         # AND - we can parse at this level for a single condition
         # print(a[0], "AND", a[1])
@@ -152,7 +156,6 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
 
         # print(conditionStr, "becomes", condition)
         conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
-        # print(conditions)
 
     else:
         # check for or
@@ -441,7 +444,7 @@ import xml.etree.ElementTree as ET
 # Passing the path of the
 # xml document to enable the
 # parsing process
-projectName = "ab5"
+projectName = "abcd"
 input_filename = "example/"+projectName+"/"+projectName+".xml"
 output_filename = "example/"+projectName+"/"+projectName+"_modified.xml"
 # tree = ET.parse('example/abc5/abc5.xml')
@@ -504,41 +507,77 @@ def addRecovery(recoveries, transitionInfo, recovery):
 
 recoveries = {}
 for policy in policies:
-    # setsToIntersect.append(policies[policy])
+    # For each policy
     print("Policy:", policy)
     for violatingTransition in policies[policy]:
-        # print("Transition:", violatingTransition["violatingCondition"])
+        # For each violating transition
+        print("Transition:", violatingTransition["violatingCondition"], violatingTransition["violatingConditionString"], violatingTransition["location"])
         setsToIntersect = []
         violatingTransitionsToRecover = []
-        setsToIntersect.append(policies[policy])
+
+        # setsToIntersect.append(policies[policy]) # Should this be violatingTransition?
         violatingTransitionsToRecover.append(violatingTransition)
+        print("Acceptable Conditions:", violatingTransition["acceptableConditions"])
+        # setsToIntersect.append(violatingTransition["acceptableConditions"])
+        # print(policies[policy]["acceptableConditions"])
+
         for otherPolicy in policies:
             if policy != otherPolicy:
                 for otherViolatingTransition in policies[otherPolicy]:
                     if violatingTransition["violatingCondition"] == otherViolatingTransition["violatingCondition"]:
                         setsToIntersect.append(policies[otherPolicy])
                         violatingTransitionsToRecover.append(otherViolatingTransition)
-        intersectingRecoveries = setsToIntersect[0][0]["acceptableConditions"]
-        print("all: ", len(setsToIntersect), setsToIntersect[0][0])
-        for i in range(1, len(setsToIntersect)):
-            # print("Intersection")
-            intersectingRecoveries = getIntersection(intersectingRecoveries, setsToIntersect[i][0]["acceptableConditions"])
-        # print("intersecting: ", len(intersectingRecoveries))
+        
+        if (len(setsToIntersect) == 0):
+            print("No sets to intersect")
+            print("Therefore this is the acceptable set:", violatingTransition["acceptableConditions"])
+            intersectingRecoveries = violatingTransition["acceptableConditions"]
+        else:
+            print("all: ", len(setsToIntersect), setsToIntersect[0][0])
+            intersectingRecoveries = setsToIntersect[0][0]["acceptableConditions"]
+            for i in range(1, len(setsToIntersect)):
+                print("Intersection")
+                intersectingRecoveries = getIntersection(intersectingRecoveries, setsToIntersect[i][0]["acceptableConditions"])
         pprint.pprint(intersectingRecoveries)
 
         # First Edit TODO: Replace with minEdit
         selectedRecovery = None
         for recovery in intersectingRecoveries:
+            print("Assessing recovery:", recovery, "for", violatingTransition["policy"]+"-"+violatingTransition["location"]+"-"+violatingTransition["violatingCondition"])
+            print(violatingTransition)
             canUse = True
             for checkPolicy in policies:
-                print("Checking - ", recovery, "against", checkPolicy)
+                print("Checking - ", recovery, "in", violatingTransition["location"], "for",  policy, "against", checkPolicy)
                 if checkPolicy != policy:
                     for checkViolatingTransition in policies[checkPolicy]:
                         print("Checking - ", recovery, "against", checkPolicy)
                         if recovery == checkViolatingTransition["violatingCondition"]:
                             canUse = False # TODO: Replace with add to list then later perform MIN calculation to select min-edit
                             break
+                else:
+                    # Within policy check, so only check transitions from same location
+                    print("\tWithin Policy", policy, "Check: Recovery option:", recovery, "Location of policy:", violatingTransition["location"])
+
+                    # Check all other transitions within policy
+                    for otherWithinPolicyTransitions in policies[checkPolicy]:
+                        # That are in the same location
+                        if otherWithinPolicyTransitions["location"] == violatingTransition["location"]:
+                            print("\t\tSame location, check for other VIOLATING transition")
+                            print("\t\tTransition:", otherWithinPolicyTransitions["policy"]+"-"+otherWithinPolicyTransitions["location"]+"-"+otherWithinPolicyTransitions["violatingCondition"])
+                            print("\t\tRecovery Option We Are testing:", recovery)
+                            if recovery == otherWithinPolicyTransitions["violatingCondition"]:
+                                print("\t\t\tCan't use this transition!")
+                                canUse = False
+                    input("Pause")
+                    # for checkViolatingTransitionWithinPolicy in policies[checkPolicy]:
+                    #     if checkViolatingTransitionWithinPolicy["location"] == violatingTransition["location"]:
+                    #         print("\tCheck:", recovery)#, "in:", policies[checkPolicy])
+                    #         if recovery == checkViolatingTransitionWithinPolicy["violatingCondition"]:
+                    #             canUse = False # TODO: Replace with add to list then later perform MIN calculation to select min-edit
+                    #             break
+
             if canUse:
+                print("Selected Recovery: ", recovery)
                 selectedRecovery = recovery
                 break
         
