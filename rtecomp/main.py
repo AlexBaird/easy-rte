@@ -1,6 +1,6 @@
 
 from parse import * # pip install parse
-
+import pprint
 # from bs4 import BeautifulSoup
  
 # # Reading the data inside the xml
@@ -132,18 +132,24 @@ def isSingleSignal(conditionString, alphabetTemplate):
 def parse_noBracketsCondition(conditionStr, alphabetTemplate):
     assert(parse_validateNoBrackets(conditionStr))
     conditions = {}
+    clkConditions = {}
     a = parse("{}and{}", conditionStr.lower())
     # print(a)
     if a is not None:
-        # and found - we can parse at this level for a single condition
+        # AND - we can parse at this level for a single condition
         # print(a[0], "AND", a[1])
         LHS = parse_singleSignal(a[0])
         RHS = parse_singleSignal(a[1])
         condition = alphabetTemplate.copy()
         if not isClockCondition(LHS["signal"]):
             condition[LHS["signal"]] = LHS["value"]
+        else:
+            condition[LHS["signal"]] = LHS["value"]
         if not isClockCondition(RHS["signal"]):
             condition[RHS["signal"]] = RHS["value"]
+        else:
+            condition[RHS["signal"]] = RHS["value"]
+
         # print(conditionStr, "becomes", condition)
         conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
         # print(conditions)
@@ -154,10 +160,19 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
         if a is None:
             print("Problem parsing no brackets condition: ", conditionStr)
             if isClockCondition(conditionStr):
-                print("Clock condition with nothing else. Any signal will avoid violation transition.")
-                # any = alphabetTemplate.copy()
-                # conditions = {**conditions, **unwindConditions({getKey(any): any})}
+
+                print("Single Clk condition: ", conditionStr)
+                
+                # Assumption is that ONLY the absence of all signals is causing this
+                allAbsent = alphabetTemplate.copy()
+                for sig in allAbsent:
+                    allAbsent[sig] = False
+                # print("allAbsent", allAbsent)
+
+                # conditions = {**conditions, **unwindConditions({getKey(allAbsent): allAbsent})}
+                conditions = {getKey(allAbsent):allAbsent}
                 return conditions
+
             elif isSingleSignal(conditionStr, alphabetTemplate):
                 print("Single condition: ", conditionStr)
                 single = parse_singleSignal(conditionStr)
@@ -174,16 +189,23 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
         condition1 = alphabetTemplate.copy()
         if not isClockCondition(LHS["signal"]):
             condition1[LHS["signal"]] = LHS["value"]
+        else:
+            condition1[LHS["signal"]] = LHS["value"]
+            # clkConditions[LHS["signal"]] = LHS["value"]
         conditions = {**conditions, **unwindConditions({getKey(condition1): condition1})}
 
         RHS = parse_singleSignal(a[1])
         condition2 = alphabetTemplate.copy()
         if not isClockCondition(RHS["signal"]):
             condition2[RHS["signal"]] = RHS["value"]
+        else:
+            condition2[RHS["signal"]] = RHS["value"]
+            # clkConditions[RHS["signal"]] = RHS["value"]
+
         conditions = {**conditions, **unwindConditions({getKey(condition2): condition2})}
     
-    print(conditionStr, "becomes", conditions)
-    return conditions
+    print(conditionStr, "becomes", conditions, clkConditions)
+    return conditions, clkConditions
 
 def getCharacterRepeated(count, char):
     repeated = ""
@@ -202,6 +224,30 @@ def getIntersection(first, second):
     # print("Second: ", second)
     # print("Intersection: ", intersection)
     return intersection
+
+def removeClockConditions(conditions, alphabetTemplate):
+    withoutClockConditions = {}
+    for condition in conditions:
+        # print(condition,conditions[condition])
+        conditionValue = {}
+        for value in conditions[condition]:
+            if value in alphabetTemplate:
+                conditionValue[value] = conditions[condition][value]
+        # print(condition[0:len(alphabetTemplate)], conditionValue)
+        withoutClockConditions[condition[0:len(alphabetTemplate)]] = conditionValue
+    return withoutClockConditions
+
+def removeClockConditionKeys(conditions, alphabetTemplate):
+    withoutClockConditions = {}
+    for condition in conditions:
+        # print('hi2', condition,conditions[condition])
+        # conditionValue = {}
+        # for value in conditions[condition]:
+        #     if value in alphabetTemplate:
+        #         conditionValue[value] = conditions[condition][value]
+        # print(condition[0:len(alphabetTemplate)], conditionValue)
+        withoutClockConditions[condition[0:len(alphabetTemplate)]] = conditions[condition]
+    return withoutClockConditions
 
 def convertConditionToDictOfBools(conditionString, alphabetTemplate):
     # print(alphabetTemplate)
@@ -247,9 +293,9 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
 
         # print("LHS:", LHS, "RHS:", RHS)
         # L = parse_noBracketsCondition(LHS, alphabetTemplate)
-        L = convertConditionToDictOfBools("("+LHS+")", alphabetTemplate)
+        L, clkL = convertConditionToDictOfBools("("+LHS+")", alphabetTemplate)
         # R = parse_noBracketsCondition(RHS, alphabetTemplate)
-        R = convertConditionToDictOfBools("("+RHS+")", alphabetTemplate)
+        R, clkR = convertConditionToDictOfBools("("+RHS+")", alphabetTemplate)
 
         # Condition is either "AND" or "OR"
         print("top condition: ", topCondition)
@@ -271,17 +317,19 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
     return topCondition
 
 def getAcceptableTransitions(violationConditions, alphabetTemplate):
+    violationConditionsNoClocks = removeClockConditionKeys(violationConditions, alphabetTemplate)
+    print("with clocks:", violationConditions)
     any = alphabetTemplate.copy()
     acceptableTransitions = {}
     allConditions = unwindConditions({getKey(any): any})
-    for condition in allConditions:
-        print(condition, violationConditions)
-        if condition in violationConditions:
+    for condition in allConditions: # TODO: Come up with a way to compare while ignoring any clock conditions?
+        if condition in violationConditionsNoClocks:
             pass
         else:
             acceptableTransitions[condition] = allConditions[condition]
 
-    print("Acceptable Transitions: ", acceptableTransitions)
+    print("Acceptable Transitions (", len(acceptableTransitions), ") -", acceptableTransitions)
+    print("Violating Transitions (", len(violationConditions), ") -", violationConditions)
     assert(len(acceptableTransitions) + len(violationConditions) == len(allConditions))
     return acceptableTransitions
 
@@ -319,11 +367,11 @@ def convertBinaryRecoveryStringToTextListRecovery(recoveryString, alphabetTempla
 
     return recoveryList
 
-def writeNewXML(root, output_filename, recoveries, alphabetTemplate):
+def writeNewXML(root, input_filename, output_filename, recoveries, alphabetTemplate):
     from bs4 import BeautifulSoup
 
     # Reading data from the xml file
-    with open('example/abcd/abcd.xml', 'r') as f:
+    with open(input_filename, 'r') as f:
         data = f.read()
 
     # Passing the data of the xml
@@ -343,7 +391,7 @@ def writeNewXML(root, output_filename, recoveries, alphabetTemplate):
         # print(recoveries[recovery]["policy"])
 
         policy = bs_data.find("Policy", {"Name":recoveries[recovery]["policy"]})
-        
+
         pt = bs_data.new_tag("PTransition")
         pt.append(bs_data.new_tag("Source"))
         pt.Source.append(recoveries[recovery]["location"])
@@ -352,8 +400,15 @@ def writeNewXML(root, output_filename, recoveries, alphabetTemplate):
         pt.Destination.append("violation")
 
         pt.append(bs_data.new_tag("Condition"))
-        pt.Condition.append(convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate))
-
+        # Need to add clock conditions here IFF RELEVANT
+        print(recoveries[recovery]["violatingCondition"], recoveries[recovery]["violatingConditionString"])
+        if isClockCondition(recoveries[recovery]["violatingConditionString"]):
+            # TODO: Extract clock condition PROPERLY (the current implementation will only work for a single)
+            clockCondition = recoveries[recovery]["violatingConditionString"]
+            pt.Condition.append("("+convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate) + " and " + clockCondition + ")")
+        else:
+            pt.Condition.append(convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate))
+        input("Any key to continue")
 
         recoveriesText = convertBinaryRecoveryStringToTextListRecovery(recoveries[recovery]["recovery"], alphabetTemplate)
         print(recoveriesText)
@@ -386,10 +441,11 @@ import xml.etree.ElementTree as ET
 # Passing the path of the
 # xml document to enable the
 # parsing process
-filename = "example/abcd/abcd.xml"
-output_filename = "example/abcd/abcd_modified.xml"
+projectName = "ab5"
+input_filename = "example/"+projectName+"/"+projectName+".xml"
+output_filename = "example/"+projectName+"/"+projectName+"_modified.xml"
 # tree = ET.parse('example/abc5/abc5.xml')
-tree = ET.parse(filename)
+tree = ET.parse(input_filename)
  
 # getting the parent tag of
 # the xml document
@@ -463,28 +519,29 @@ for policy in policies:
                         setsToIntersect.append(policies[otherPolicy])
                         violatingTransitionsToRecover.append(otherViolatingTransition)
         intersectingRecoveries = setsToIntersect[0][0]["acceptableConditions"]
-        # print("all: ", len(intersectingRecoveries))
+        print("all: ", len(setsToIntersect), setsToIntersect[0][0])
         for i in range(1, len(setsToIntersect)):
             # print("Intersection")
             intersectingRecoveries = getIntersection(intersectingRecoveries, setsToIntersect[i][0]["acceptableConditions"])
         # print("intersecting: ", len(intersectingRecoveries))
-        # pprint.pprint(intersectingRecoveries)
+        pprint.pprint(intersectingRecoveries)
 
         # First Edit TODO: Replace with minEdit
         selectedRecovery = None
         for recovery in intersectingRecoveries:
             canUse = True
             for checkPolicy in policies:
+                print("Checking - ", recovery, "against", checkPolicy)
                 if checkPolicy != policy:
                     for checkViolatingTransition in policies[checkPolicy]:
-                        # print("Checking - ", recovery, "against", checkPolicy)
+                        print("Checking - ", recovery, "against", checkPolicy)
                         if recovery == checkViolatingTransition["violatingCondition"]:
                             canUse = False # TODO: Replace with add to list then later perform MIN calculation to select min-edit
                             break
             if canUse:
                 selectedRecovery = recovery
                 break
-
+        
         assert(selectedRecovery is not None)
         print("\tSelected Recovery:", selectedRecovery, "for", violatingTransition["policy"]+"-"+violatingTransition["location"]+"-"+violatingTransition["violatingCondition"])
         for vt in violatingTransitionsToRecover:
@@ -496,4 +553,4 @@ import pprint
 pprint.pprint(recoveries)
 print(len(recoveries))
 
-writeNewXML(originalXMLRoot, output_filename, recoveries, alphabetTemplate)
+writeNewXML(originalXMLRoot, input_filename, output_filename, recoveries, alphabetTemplate)
