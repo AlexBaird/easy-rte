@@ -29,7 +29,7 @@ def convertInterfaceToBoolDict(root):
         for child in alphabetItem:
             if child.get("Type") != "bool":
                 print("Support for boolean interfaces only!")
-                exit()
+                assert(child.get("Type") == "bool")
             if child.get("Constant") == "false":
                 print("Added ", child.get("Name"))
                 keyLength += 1
