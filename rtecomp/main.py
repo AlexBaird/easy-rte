@@ -243,7 +243,7 @@ def removeClockConditions(conditions, alphabetTemplate):
 def removeClockConditionKeys(conditions, alphabetTemplate):
     withoutClockConditions = {}
     for condition in conditions:
-        # print('hi2', condition,conditions[condition])
+        print('hi2', condition, conditions)#[condition], len(alphabetTemplate))
         # conditionValue = {}
         # for value in conditions[condition]:
         #     if value in alphabetTemplate:
@@ -252,6 +252,10 @@ def removeClockConditionKeys(conditions, alphabetTemplate):
         withoutClockConditions[condition[0:len(alphabetTemplate)]] = conditions[condition]
     return withoutClockConditions
 
+def stripClockConditionsFromKey(key, alphabetKeyLength):
+    print("alphabetKeyLength:", alphabetKeyLength, "long, Key is", len(key), "long")
+    return key[0:alphabetKeyLength]
+
 def convertConditionToDictOfBools(conditionString, alphabetTemplate):
     # print(alphabetTemplate)
     print(conditionString)
@@ -259,6 +263,9 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
     # Remove spaces
     a = conditionString.replace(" ", "")
     print("Original", a)
+    
+    # Count number of brackets
+    
 
     # Remove topmost brackets
     b = parse("({})", a)
@@ -311,17 +318,19 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
             # AND means INTERSECTION of sets of conditions for transition to violation
             print("AND")
             topCondition = getIntersection(L, R)
-
+        
+        clk = {}
     else:
         print(b, b[0])
-        topCondition = parse_noBracketsCondition(b[0], alphabetTemplate)
+        topCondition, clk = parse_noBracketsCondition(b[0], alphabetTemplate)
 
-    print("Returning: ", topCondition)
-    return topCondition
+    print("Returning: ", topCondition, "and clk", clk)
+    return topCondition, clk
 
 def getAcceptableTransitions(violationConditions, alphabetTemplate):
     violationConditionsNoClocks = removeClockConditionKeys(violationConditions, alphabetTemplate)
     print("with clocks:", violationConditions)
+    print("without clocks:", violationConditionsNoClocks)
     any = alphabetTemplate.copy()
     acceptableTransitions = {}
     allConditions = unwindConditions({getKey(any): any})
@@ -371,6 +380,9 @@ def convertBinaryRecoveryStringToTextListRecovery(recoveryString, alphabetTempla
     return recoveryList
 
 def writeNewXML(root, input_filename, output_filename, recoveries, alphabetTemplate):
+    print("======================================")
+    print(" WRITING XML FILE")
+    print("======================================")
     from bs4 import BeautifulSoup
 
     # Reading data from the xml file
@@ -441,10 +453,14 @@ def writeNewXML(root, input_filename, output_filename, recoveries, alphabetTempl
 
 import xml.etree.ElementTree as ET
 
+print("======================================")
+print(" READING & PARSING EXISTING XML FILE")
+print("======================================")
+
 # Passing the path of the
 # xml document to enable the
 # parsing process
-projectName = "abcd"
+projectName = "ab5"
 input_filename = "example/"+projectName+"/"+projectName+".xml"
 output_filename = "example/"+projectName+"/"+projectName+"_modified.xml"
 # tree = ET.parse('example/abc5/abc5.xml')
@@ -468,6 +484,10 @@ alphabetTemplate, alphabetKeyLength = convertInterfaceToBoolDict(originalXMLRoot
 #     for childchild in child:
 #         print("\t", childchild.tag, childchild.attrib)
 
+print("==========================================")
+print(" COLLECTING ALL VIOLATING TRANSITIONS")
+print("==========================================")
+
 # Find each policies violating transitions
 policies = {}
 for policy in originalXMLRoot.iter("Policy"):
@@ -476,7 +496,7 @@ for policy in originalXMLRoot.iter("Policy"):
     for transition in policy.iter('PTransition'):
         for child in transition.iter('Recover'):
             print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
-            violationConditions = convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
+            violationConditions, _ = convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
             print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
             print("Violation Conditions: ", violationConditions)
             acceptable = getAcceptableTransitions(violationConditions, alphabetTemplate)
@@ -489,7 +509,7 @@ for policy in originalXMLRoot.iter("Policy"):
                     "violationRef":policyViolationCount,
                     "location":transition.find("Source").text,
                     "violatingConditionString":transition.find("Condition").text,
-                    "violatingCondition":violatingCondition,
+                    "violatingCondition":stripClockConditionsFromKey(violatingCondition, alphabetKeyLength), #TODO Remove any clock sigs
                     "acceptableConditions":acceptable
                 })
             # input("Press any key to continue.")
@@ -504,6 +524,10 @@ def addRecovery(recoveries, transitionInfo, recovery):
         "recovery":recovery
     }
     return
+
+print("==========================================")
+print(" DETERMINING WHICH RECOVERIES SATISFY ALL")
+print("==========================================")
 
 recoveries = {}
 for policy in policies:
