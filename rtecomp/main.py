@@ -265,11 +265,20 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
     print("Original", a)
     
     # Count number of brackets
-    
+    left = a.count("(")
+    right = a.count(")")
+    assert(left == right, "Brackets must be matching")
+
+    # If even count of brackets, there is a missing set of brackets on outer most (true always?)
+    if (left % 2 == 0):
+        # print("Even;", left)
+        count = 1
+    else:
+        # print("Odd;", left)
+        count = 0
 
     # Remove topmost brackets
     b = parse("({})", a)
-    count = 0
     if b is not None:
         while True:
             # Keep going till all top brackets gone
@@ -423,7 +432,7 @@ def writeNewXML(root, input_filename, output_filename, recoveries, alphabetTempl
             pt.Condition.append("("+convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate) + " and " + clockCondition + ")")
         else:
             pt.Condition.append(convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate))
-        input("Any key to continue")
+        # input("Any key to continue")
 
         recoveriesText = convertBinaryRecoveryStringToTextListRecovery(recoveries[recovery]["recovery"], alphabetTemplate)
         print(recoveriesText)
@@ -592,7 +601,7 @@ for policy in policies:
                             if recovery == otherWithinPolicyTransitions["violatingCondition"]:
                                 print("\t\t\tCan't use this transition!")
                                 canUse = False
-                    input("Pause")
+                    # input("Pause")
                     # for checkViolatingTransitionWithinPolicy in policies[checkPolicy]:
                     #     if checkViolatingTransitionWithinPolicy["location"] == violatingTransition["location"]:
                     #         print("\tCheck:", recovery)#, "in:", policies[checkPolicy])
