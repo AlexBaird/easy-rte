@@ -174,7 +174,7 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
 
                 # conditions = {**conditions, **unwindConditions({getKey(allAbsent): allAbsent})}
                 conditions = {getKey(allAbsent):allAbsent}
-                return conditions
+                return conditions, clkConditions
 
             elif isSingleSignal(conditionStr, alphabetTemplate):
                 print("Single condition: ", conditionStr)
@@ -182,7 +182,7 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
                 condition = alphabetTemplate.copy()
                 condition[single["signal"]] = single["value"]
                 conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
-                return conditions
+                return conditions, clkConditions
 
             else:
                 assert(False)
@@ -354,6 +354,18 @@ def getAcceptableTransitions(violationConditions, alphabetTemplate):
     assert(len(acceptableTransitions) + len(violationConditions) == len(allConditions))
     return acceptableTransitions
 
+# Provided two binary numbers (as STRINGS)
+# This function will calculate the number of bits difference between the two
+def calculateDistanceBetween(condition1, condition2):
+    assert(len(condition1) == len(condition2))
+    # assert(type(condition1) == type.String)
+    distance = 0
+    for i in range(0, len(condition1)):
+        # print(i, condition1[i], condition2[i], condition1[i] == condition2[i])
+        if (condition1[i] != condition2[i]):
+            distance += 1
+    return (distance)
+
 def convertBinaryStringToTextCondition(binaryString, alphabetTemplate):
     # print(binaryString)
     i = 0
@@ -435,7 +447,7 @@ def writeNewXML(root, input_filename, output_filename, recoveries, alphabetTempl
         # input("Any key to continue")
 
         recoveriesText = convertBinaryRecoveryStringToTextListRecovery(recoveries[recovery]["recovery"], alphabetTemplate)
-        print(recoveriesText)
+        print(recoveriesText) 
         for recoveryText in recoveriesText:
             recoveryTag = bs_data.new_tag("Recover")
             # print(recoveryText["VarName"], recoveryText["Value"])
@@ -573,7 +585,8 @@ for policy in policies:
                 intersectingRecoveries = getIntersection(intersectingRecoveries, setsToIntersect[i][0]["acceptableConditions"])
         pprint.pprint(intersectingRecoveries)
 
-        # First Edit TODO: Replace with minEdit
+        # First find all edits which satisfy all policies
+        recoveriesSatisfyingAll = []
         selectedRecovery = None
         for recovery in intersectingRecoveries:
             print("Assessing recovery:", recovery, "for", violatingTransition["policy"]+"-"+violatingTransition["location"]+"-"+violatingTransition["violatingCondition"])
@@ -610,9 +623,18 @@ for policy in policies:
                     #             break
 
             if canUse:
-                print("Selected Recovery: ", recovery)
-                selectedRecovery = recovery
+                print("Added Recovery Satisfying All: ", recovery)
+                recoveriesSatisfyingAll.append(recovery)
                 break
+
+        # Calculate and select minimum distance option (MinEdit)
+        distance = -1
+        for satisfyingRecovery in recoveriesSatisfyingAll:
+            print("satisfyingRecovery: ", satisfyingRecovery, "distance from pre-edit:", calculateDistanceBetween(violatingTransition["violatingCondition"], satisfyingRecovery))
+            if (calculateDistanceBetween(violatingTransition["violatingCondition"], satisfyingRecovery) < distance) or (distance == -1):
+                print("Current Min Distance Recovery: ", satisfyingRecovery, "dist:", calculateDistanceBetween(violatingTransition["violatingCondition"], satisfyingRecovery))
+                selectedRecovery = satisfyingRecovery
+        input("Pause")
         
         assert(selectedRecovery is not None)
         print("\tSelected Recovery:", selectedRecovery, "for", violatingTransition["policy"]+"-"+violatingTransition["location"]+"-"+violatingTransition["violatingCondition"])
