@@ -446,6 +446,10 @@ def writeNewXML(root, input_filename, output_filename, recoveries, alphabetTempl
             pt.Condition.append(convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate))
         # input("Any key to continue")
 
+        recoveryRefTag = bs_data.new_tag("RecoveryReference")
+        recoveryRefTag.append(str(recoveries[recovery]["violationRef"]))
+        pt.append(recoveryRefTag)
+
         recoveriesText = convertBinaryRecoveryStringToTextListRecovery(recoveries[recovery]["recovery"], alphabetTemplate)
         print(recoveriesText) 
         for recoveryText in recoveriesText:
@@ -458,7 +462,7 @@ def writeNewXML(root, input_filename, output_filename, recoveries, alphabetTempl
             varValueToRecover = bs_data.new_tag("Value")
             varValueToRecover.append(recoveryText["Value"])
             recoveryTag.append(varValueToRecover)
-            
+
             pt.append(recoveryTag)
 
         policy.Machine.append(pt)
@@ -530,7 +534,7 @@ for policy in originalXMLRoot.iter("Policy"):
                     "violationRef":policyViolationCount,
                     "location":transition.find("Source").text,
                     "violatingConditionString":transition.find("Condition").text,
-                    "violatingCondition":stripClockConditionsFromKey(violatingCondition, alphabetKeyLength), #TODO Remove any clock sigs
+                    "violatingCondition":stripClockConditionsFromKey(violatingCondition, alphabetKeyLength),
                     "acceptableConditions":acceptable
                 })
             # input("Press any key to continue.")
@@ -540,6 +544,7 @@ def addRecovery(recoveries, transitionInfo, recovery):
     recoveries[transitionInfo["policy"]+"-"+transitionInfo["location"]+"-"+transitionInfo["violatingCondition"]] = {
         "policy":transitionInfo["policy"],
         "location":transitionInfo["location"],
+        "violationRef":transitionInfo["violationRef"],
         "violatingConditionString":transitionInfo["violatingConditionString"],
         "violatingCondition":transitionInfo["violatingCondition"],
         "recovery":recovery
@@ -628,6 +633,7 @@ for policy in policies:
                 break
 
         # Calculate and select minimum distance option (MinEdit)
+        print("recoveriesSatisfyingAll", recoveriesSatisfyingAll)
         distance = -1
         for satisfyingRecovery in recoveriesSatisfyingAll:
             print("satisfyingRecovery: ", satisfyingRecovery, "distance from pre-edit:", calculateDistanceBetween(violatingTransition["violatingCondition"], satisfyingRecovery))
