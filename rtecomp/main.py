@@ -218,9 +218,11 @@ def getCharacterRepeated(count, char):
 def getIntersection(first, second):
     intersection = {}
     for f in first:
-        if f in second:
-            # print("Found a match")
-            intersection[f] = second[f]
+        # if f in second:
+        for s in second:
+            if f == s:
+                # print("Found a match")
+                intersection[f] = second[f]
         # else:
             # print("Found NO match", first[f])
     # print("First: ", first)
@@ -485,7 +487,7 @@ print("======================================")
 # Passing the path of the
 # xml document to enable the
 # parsing process
-projectName = "ab5"
+projectName = "ab"
 input_filename = "example/"+projectName+"/"+projectName+".xml"
 output_filename = "example/"+projectName+"/"+projectName+"_modified.xml"
 # tree = ET.parse('example/abc5/abc5.xml')
@@ -550,6 +552,73 @@ def addRecovery(recoveries, transitionInfo, recovery):
         "recovery":recovery
     }
     return
+
+print("==========================================")
+print(" CREATING VIOLATION REF TABLE")
+print("==========================================")
+
+# Create template to be used as rows (each policy should have a column, which will hold the violation reference)
+rowTemplate = {}
+for policy in policies:
+    rowTemplate[policy] = 1 # Changed 0 here to 1 to remove don't cares
+
+numberRowsExpected = 1
+for policy in policies:
+    numberRowsExpected = numberRowsExpected * (len(policies[policy])) # Removed +1 here to remove don't cares
+
+rowsExample = []
+rowsExample.append(rowTemplate)
+for policy in policies:
+    rowCount = len(rowsExample)
+    for i in range(rowCount):
+        for violation in policies[policy]:
+            if violation["violationRef"] > 1: # Added check here to remove don't cares
+                row = rowsExample[i].copy()
+                row[policy] = violation["violationRef"]
+                rowsExample.append(row)
+
+assert(len(rowsExample) == numberRowsExpected)
+
+# List of dictionaries with each policy and violation refs
+import pprint
+# pprint.pprint(rowsExample)
+
+print("=============================================")
+print(" PRE-CRUNCHING EDITS FOR VIOLATION REF COMBO")
+print("=============================================")
+
+# Now iterate through this list, pulling each set of acceptable from policies object
+for row in rowsExample:
+    print(row)
+    acceptableSets = []
+    for policy in row:
+        if row[policy] == 0:
+            print("Dont Care - Add things that dont violate the policy.. in this location..?")
+        else:
+            print("Add", policy, row[policy]-1)#, policies[policy][row[policy]-1]["acceptableConditions"])
+            acceptableSets.append(policies[policy][row[policy]-1]["acceptableConditions"])
+
+    # Do an intersection
+    intersection = acceptableSets[0]
+    for i in range(1, len(acceptableSets)):
+        intersection = getIntersection(intersection, acceptableSets[i])
+
+    print("Intersection:", end=" ")
+    pprint.pprint(intersection)
+    
+    # NOTE: This will fail when intersection is empty set! 
+    assert(len(intersection) > 0)
+    # We are expecting this to occur for some examples, just need to handle it gracefully.
+    # In some cases this assert will fail when the designer has created unenforceable policies
+    # In other cases, the policies will never emit the two violationRef signals at the same time, thus this row/edit/enforcement action doesnt need to exist
+   
+    # TODO: Then do a minEdit
+    selectedRecovery = intersection[list(intersection.keys())[0]] 
+
+    row["recovery"] = list(intersection.keys())[0]
+
+# TODO: Remove this temp exit 
+exit()
 
 print("==========================================")
 print(" DETERMINING WHICH RECOVERIES SATISFY ALL")
@@ -640,7 +709,7 @@ for policy in policies:
             if (calculateDistanceBetween(violatingTransition["violatingCondition"], satisfyingRecovery) < distance) or (distance == -1):
                 print("Current Min Distance Recovery: ", satisfyingRecovery, "dist:", calculateDistanceBetween(violatingTransition["violatingCondition"], satisfyingRecovery))
                 selectedRecovery = satisfyingRecovery
-        input("Pause")
+        # input("Pause")
         
         assert(selectedRecovery is not None)
         print("\tSelected Recovery:", selectedRecovery, "for", violatingTransition["policy"]+"-"+violatingTransition["location"]+"-"+violatingTransition["violatingCondition"])
