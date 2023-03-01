@@ -402,7 +402,7 @@ def convertBinaryRecoveryStringToTextListRecovery(recoveryString, alphabetTempla
 
     return recoveryList
 
-def writeNewXML(root, input_filename, output_filename, recoveries, alphabetTemplate):
+def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplate):
     print("======================================")
     print(" WRITING XML FILE")
     print("======================================")
@@ -424,50 +424,39 @@ def writeNewXML(root, input_filename, output_filename, recoveries, alphabetTempl
             tag.extract()
 
     # Add ALL NEW recoveries
-    for recovery in recoveries:
-        # print(recoveries[recovery])
-        # print(recoveries[recovery]["policy"])
+    for policy in policies:
+        recoveries = policies[policy]
+        for recovery in recoveries:
+            # print(recoveries[recovery])
+            # print(recoveries[recovery]["policy"])
 
-        policy = bs_data.find("Policy", {"Name":recoveries[recovery]["policy"]})
+            policyTag = bs_data.find("Policy", {"Name":recovery["policy"]})
 
-        pt = bs_data.new_tag("PTransition")
-        pt.append(bs_data.new_tag("Source"))
-        pt.Source.append(recoveries[recovery]["location"])
+            pt = bs_data.new_tag("PTransition")
+            pt.append(bs_data.new_tag("Source"))
+            pt.Source.append(recovery["location"])
 
-        pt.append(bs_data.new_tag("Destination"))
-        pt.Destination.append("violation")
+            pt.append(bs_data.new_tag("Destination"))
+            pt.Destination.append("violation")
 
-        pt.append(bs_data.new_tag("Condition"))
-        # Need to add clock conditions here IFF RELEVANT
-        print(recoveries[recovery]["violatingCondition"], recoveries[recovery]["violatingConditionString"])
-        if isClockCondition(recoveries[recovery]["violatingConditionString"]):
-            # TODO: Extract clock condition PROPERLY (the current implementation will only work for a single)
-            clockCondition = recoveries[recovery]["violatingConditionString"]
-            pt.Condition.append("("+convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate) + " and " + clockCondition + ")")
-        else:
-            pt.Condition.append(convertBinaryStringToTextCondition(recoveries[recovery]["violatingCondition"], alphabetTemplate))
-        # input("Any key to continue")
+            pt.append(bs_data.new_tag("Condition"))
+            # Need to add clock conditions here IFF RELEVANT
+            print(recovery["violatingCondition"], recovery["violatingConditionString"])
+            if isClockCondition(recovery["violatingConditionString"]):
+                # TODO: Extract clock condition PROPERLY (the current implementation will only work for a single)
+                clockCondition = recovery["violatingConditionString"]
+                pt.Condition.append("("+convertBinaryStringToTextCondition(recovery["violatingCondition"], alphabetTemplate) + " and " + clockCondition + ")")
+            else:
+                pt.Condition.append(convertBinaryStringToTextCondition(recovery["violatingCondition"], alphabetTemplate))
+            # input("Any key to continue")
 
-        recoveryRefTag = bs_data.new_tag("RecoveryReference")
-        recoveryRefTag.append(str(recoveries[recovery]["violationRef"]))
-        pt.append(recoveryRefTag)
+            recoveryRefTag = bs_data.new_tag("RecoveryReference")
+            recoveryRefTag.append(str(recovery["violationRef"]))
+            pt.append(recoveryRefTag)
 
-        recoveriesText = convertBinaryRecoveryStringToTextListRecovery(recoveries[recovery]["recovery"], alphabetTemplate)
-        print(recoveriesText) 
-        for recoveryText in recoveriesText:
-            recoveryTag = bs_data.new_tag("Recover")
-            # print(recoveryText["VarName"], recoveryText["Value"])
-            varNameToRecover = bs_data.new_tag("VarName")
-            varNameToRecover.append(recoveryText["VarName"])
-            recoveryTag.append(varNameToRecover)
 
-            varValueToRecover = bs_data.new_tag("Value")
-            varValueToRecover.append(recoveryText["Value"])
-            recoveryTag.append(varValueToRecover)
 
-            pt.append(recoveryTag)
-
-        policy.Machine.append(pt)
+            policyTag.Machine.append(pt)
 
     # Output the contents of the
     # modified xml file
@@ -617,109 +606,7 @@ for row in rowsExample:
 
     row["recovery"] = list(intersection.keys())[0]
 
+writeNewXML(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate)
+
 # TODO: Remove this temp exit 
 exit()
-
-print("==========================================")
-print(" DETERMINING WHICH RECOVERIES SATISFY ALL")
-print("==========================================")
-
-recoveries = {}
-for policy in policies:
-    # For each policy
-    print("Policy:", policy)
-    for violatingTransition in policies[policy]:
-        # For each violating transition
-        print("Transition:", violatingTransition["violatingCondition"], violatingTransition["violatingConditionString"], violatingTransition["location"])
-        setsToIntersect = []
-        violatingTransitionsToRecover = []
-
-        # setsToIntersect.append(policies[policy]) # Should this be violatingTransition?
-        violatingTransitionsToRecover.append(violatingTransition)
-        print("Acceptable Conditions:", violatingTransition["acceptableConditions"])
-        # setsToIntersect.append(violatingTransition["acceptableConditions"])
-        # print(policies[policy]["acceptableConditions"])
-
-        for otherPolicy in policies:
-            if policy != otherPolicy:
-                for otherViolatingTransition in policies[otherPolicy]:
-                    if violatingTransition["violatingCondition"] == otherViolatingTransition["violatingCondition"]:
-                        setsToIntersect.append(policies[otherPolicy])
-                        violatingTransitionsToRecover.append(otherViolatingTransition)
-        
-        if (len(setsToIntersect) == 0):
-            print("No sets to intersect")
-            print("Therefore this is the acceptable set:", violatingTransition["acceptableConditions"])
-            intersectingRecoveries = violatingTransition["acceptableConditions"]
-        else:
-            print("all: ", len(setsToIntersect), setsToIntersect[0][0])
-            intersectingRecoveries = setsToIntersect[0][0]["acceptableConditions"]
-            for i in range(1, len(setsToIntersect)):
-                print("Intersection")
-                intersectingRecoveries = getIntersection(intersectingRecoveries, setsToIntersect[i][0]["acceptableConditions"])
-        pprint.pprint(intersectingRecoveries)
-
-        # First find all edits which satisfy all policies
-        recoveriesSatisfyingAll = []
-        selectedRecovery = None
-        for recovery in intersectingRecoveries:
-            print("Assessing recovery:", recovery, "for", violatingTransition["policy"]+"-"+violatingTransition["location"]+"-"+violatingTransition["violatingCondition"])
-            print(violatingTransition)
-            canUse = True
-            for checkPolicy in policies:
-                print("Checking - ", recovery, "in", violatingTransition["location"], "for",  policy, "against", checkPolicy)
-                if checkPolicy != policy:
-                    for checkViolatingTransition in policies[checkPolicy]:
-                        print("Checking - ", recovery, "against", checkPolicy)
-                        if recovery == checkViolatingTransition["violatingCondition"]:
-                            canUse = False # TODO: Replace with add to list then later perform MIN calculation to select min-edit
-                            break
-                else:
-                    # Within policy check, so only check transitions from same location
-                    print("\tWithin Policy", policy, "Check: Recovery option:", recovery, "Location of policy:", violatingTransition["location"])
-
-                    # Check all other transitions within policy
-                    for otherWithinPolicyTransitions in policies[checkPolicy]:
-                        # That are in the same location
-                        if otherWithinPolicyTransitions["location"] == violatingTransition["location"]:
-                            print("\t\tSame location, check for other VIOLATING transition")
-                            print("\t\tTransition:", otherWithinPolicyTransitions["policy"]+"-"+otherWithinPolicyTransitions["location"]+"-"+otherWithinPolicyTransitions["violatingCondition"])
-                            print("\t\tRecovery Option We Are testing:", recovery)
-                            if recovery == otherWithinPolicyTransitions["violatingCondition"]:
-                                print("\t\t\tCan't use this transition!")
-                                canUse = False
-                    # input("Pause")
-                    # for checkViolatingTransitionWithinPolicy in policies[checkPolicy]:
-                    #     if checkViolatingTransitionWithinPolicy["location"] == violatingTransition["location"]:
-                    #         print("\tCheck:", recovery)#, "in:", policies[checkPolicy])
-                    #         if recovery == checkViolatingTransitionWithinPolicy["violatingCondition"]:
-                    #             canUse = False # TODO: Replace with add to list then later perform MIN calculation to select min-edit
-                    #             break
-
-            if canUse:
-                print("Added Recovery Satisfying All: ", recovery)
-                recoveriesSatisfyingAll.append(recovery)
-                break
-
-        # Calculate and select minimum distance option (MinEdit)
-        print("recoveriesSatisfyingAll", recoveriesSatisfyingAll)
-        distance = -1
-        for satisfyingRecovery in recoveriesSatisfyingAll:
-            print("satisfyingRecovery: ", satisfyingRecovery, "distance from pre-edit:", calculateDistanceBetween(violatingTransition["violatingCondition"], satisfyingRecovery))
-            if (calculateDistanceBetween(violatingTransition["violatingCondition"], satisfyingRecovery) < distance) or (distance == -1):
-                print("Current Min Distance Recovery: ", satisfyingRecovery, "dist:", calculateDistanceBetween(violatingTransition["violatingCondition"], satisfyingRecovery))
-                selectedRecovery = satisfyingRecovery
-        # input("Pause")
-        
-        assert(selectedRecovery is not None)
-        print("\tSelected Recovery:", selectedRecovery, "for", violatingTransition["policy"]+"-"+violatingTransition["location"]+"-"+violatingTransition["violatingCondition"])
-        for vt in violatingTransitionsToRecover:
-            if vt["policy"]+"-"+vt["location"]+"-"+vt["violatingCondition"] not in recoveries:
-                print("\t\tAdded Recovery:", selectedRecovery, "for", vt["policy"]+"-"+vt["location"]+"-"+vt["violatingCondition"])
-                addRecovery(recoveries, vt, selectedRecovery)
-
-import pprint
-pprint.pprint(recoveries)
-print(len(recoveries))
-
-writeNewXML(originalXMLRoot, input_filename, output_filename, recoveries, alphabetTemplate)
