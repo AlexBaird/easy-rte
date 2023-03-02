@@ -402,7 +402,7 @@ def convertBinaryRecoveryStringToTextListRecovery(recoveryString, alphabetTempla
 
     return recoveryList
 
-def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplate):
+def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplate, rowsExample):
     print("======================================")
     print(" WRITING XML FILE")
     print("======================================")
@@ -457,6 +457,35 @@ def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplat
 
 
             policyTag.Machine.append(pt)
+
+    topEnfFnTag = bs_data.find("EnforcedFunction")
+    selectLUTTag = bs_data.new_tag("SelectLUT")
+    for row in rowsExample:
+        rowTag = bs_data.new_tag("Row")
+
+        recoveryTag = bs_data.new_tag("Recovery")
+        recoveryTag.append(row["recovery"])
+
+        for k in row:
+            if k != "recovery":
+                # Policy
+                pRefTag = bs_data.new_tag("PolicyRef")
+
+                pTag = bs_data.new_tag("Policy")
+                pTag.append(str(k))
+                pRefTag.append(pTag)
+                refTag = bs_data.new_tag("RecoveryReference")
+                refTag.append(str(row[k]))
+                pRefTag.append(refTag)
+
+                rowTag.append(pRefTag)
+
+        # recoveryTag = bs_data.new_tag("Row")
+
+        rowTag.append(recoveryTag)
+        selectLUTTag.append(rowTag)
+
+    topEnfFnTag.append(selectLUTTag)
 
     # Output the contents of the
     # modified xml file
@@ -606,7 +635,4 @@ for row in rowsExample:
 
     row["recovery"] = list(intersection.keys())[0]
 
-writeNewXML(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate)
-
-# TODO: Remove this temp exit 
-exit()
+writeNewXML(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate, rowsExample)
