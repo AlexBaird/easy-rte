@@ -469,15 +469,7 @@ def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplat
         for k in row:
             if k != "recovery":
                 # Policy
-                pRefTag = bs_data.new_tag("PolicyRef")
-
-                pTag = bs_data.new_tag("Policy")
-                pTag.append(str(k))
-                pRefTag.append(pTag)
-                refTag = bs_data.new_tag("RecoveryReference")
-                refTag.append(str(row[k]))
-                pRefTag.append(refTag)
-
+                pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]))
                 rowTag.append(pRefTag)
 
         # recoveryTag = bs_data.new_tag("Row")
