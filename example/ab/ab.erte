@@ -1,0 +1,40 @@
+function ab;
+interface of ab {
+	out bool A;
+	out bool B;
+}
+
+policy a of ab {
+	states {
+
+		a0 {
+			-> a1 on (A);
+
+			-> violation on (!A) recover A := 1;	
+		}
+
+		a1 {
+			-> a0 on (!A);
+
+			-> violation on (A) recover A := 0;	
+		}
+	}
+}
+
+policy b of ab {
+	states {
+
+		b0 {
+			-> b1 on (B);
+
+			-> violation on (!B) recover B := 1;	
+		}
+
+		b1 {
+			-> b0 on (!B);
+
+			-> violation on (B) recover B := 0;	
+		}
+
+	}
+}

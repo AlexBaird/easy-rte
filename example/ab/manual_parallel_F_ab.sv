@@ -5,532 +5,546 @@
 //Warning: This is experimental parallel composition code.
 
 
-	module F_combinatorialVerilog_ab_policy_a_input(
-		//inputs (plant to controller)
+module F_combinatorialVerilog_ab_policy_a_input(
+	//inputs (plant to controller)
 
 
-		input wire [1:0] ab_policy_a_state_in,
+	input wire [1:0] ab_policy_a_state_in,
 
-		input wire clk
-	);
+	input wire clk
+);
 
-		//For each policy, we need define types for the state machines
-		localparam
-			POLICY_STATE_ab_a_a0 = 0,
-			POLICY_STATE_ab_a_a1 = 1,
-			POLICY_STATE_ab_a_violation = 2;
+	//For each policy, we need define types for the state machines
+	localparam
+		POLICY_STATE_ab_a_a0 = 0,
+		POLICY_STATE_ab_a_a1 = 1,
+		POLICY_STATE_ab_a_violation = 2;
 
-		//reg recoveryRef = 0;
+	//reg recoveryRef = 0;
+	
+	//internal vars
+	
+	// initial begin
+	// 	policy_a_no_edit = 1;
+	// end
+
+	always @* begin
 		
-		//internal vars
+		// Default no change to inputs/outputs (transparency) 
+
+		// Do we need //recoveryRef default?
+
+		// Default no clock reset
 		
-		// initial begin
-		// 	policy_a_no_edit = 1;
-		// end
 
-		always @* begin
-			
-			// Default no change to inputs/outputs (transparency) 
-
-			// Do we need //recoveryRef default?
-
-			// Default no clock reset
-			
-
-			//input policies
-			
-				//INPUT POLICY a BEGIN 
-				case(ab_policy_a_state_in)
-					POLICY_STATE_ab_a_a0: begin
-						
-					end
-					POLICY_STATE_ab_a_a1: begin
-						
-					end
-					
-				endcase
-			
-			//INPUT POLICY a END
-		end
-
-	endmodule
-
-	module F_combinatorialVerilog_ab_policy_a_output(
-		//outputs (controller to plant)
-		input wire  A_ctp_in,
-		output reg  A_ctp_out,
+		//input policies
 		
-		input wire  B_ctp_in,
-		output reg  B_ctp_out,
-
-		input wire [1:0] ab_policy_a_state_in,
-
-		input wire clk
-	);
-
-		//For each policy, we need define types for the state machines
-		localparam
-			POLICY_STATE_ab_a_a0 = 0,
-			POLICY_STATE_ab_a_a1 = 1,
-			POLICY_STATE_ab_a_violation = 2;
-
-		reg A = 0;
-		reg B = 0;
-
-		always @* begin
-			// Default no change to inputs/outputs (transparency) 
-			A = A_ctp_in;
-			B = B_ctp_in;
-
-			// Do we need //recoveryRef default?
-
-			// Default no clock reset
-
-			//output policies
-				//OUTPUT POLICY a BEGIN 
-			
+			//INPUT POLICY a BEGIN 
 			case(ab_policy_a_state_in)
 				POLICY_STATE_ab_a_a0: begin
 					
-					if (!(A) && B) begin
-						//transition a0 -> violation on (!A and B)
-						//select a transition to solve the problem
-						
-						//Selected non-violation transition "a0 -> a1 on ( A )" and action is required
-						A = 1;
-
-						//recoveryRef = 1;
-						
-					end 
-					if (!(A) && !(B)) begin
-						//transition a0 -> violation on (!A and !B)
-						//select a transition to solve the problem
-						
-						//Selected non-violation transition "a0 -> a1 on ( A )" and action is required
-						A = 1;
-
-						//recoveryRef = 1;
-
-						
-					end 
 				end
 				POLICY_STATE_ab_a_a1: begin
 					
-					if (A && B) begin
-						//transition a1 -> violation on (A and B)
-						//select a transition to solve the problem
-						
-						//Selected non-violation transition "a1 -> a0 on ( !A )" and action is required
-						A = 0;
-
-						//recoveryRef = 1;
-						
-						
-					end 
-					if (A && !(B)) begin
-						//transition a1 -> violation on (A and !B)
-						//select a transition to solve the problem
-						
-						//Selected non-violation transition "a1 -> a0 on ( !A )" and action is required
-						A = 0;
-
-						//recoveryRef = 1;
-
-						
-					end 
 				end
 				
 			endcase
-			//OUTPUT POLICY a END
+		
+		//INPUT POLICY a END
+	end
 
-			// Check if any enforcement action required for this policy
-			// TODO: Move this to within each enforcement action (when edit required set no_edit to false)
-			// if ((A === A_ctp_in) & (B === B_ctp_in)) begin
-			// 	policy_a_no_edit <= 1;
-			// end else begin
-			// 	policy_a_no_edit <= 0;
-			// end
-			
-			// Post input enforced 
-			
-			// Post output enforced 
-			A_ctp_out = A;
-			B_ctp_out = B;
-			
-		end
+endmodule
 
-	endmodule
+module F_combinatorialVerilog_ab_policy_a_output(
+	//outputs (controller to plant)
+	input wire  A_ctp_in,
+	output reg  A_ctp_out,
+	
+	input wire  B_ctp_in,
+	output reg  B_ctp_out,
 
-	module F_combinatorialVerilog_ab_policy_a_transition(
-		input wire A_ctp_final,
-		input wire B_ctp_final,
+	input wire [1:0] ab_policy_a_state_in,
 
-		output wire [1:0] ab_policy_a_state_out,
+	output wire [1:0] ab_policy_a_output_recovery_ref,
 
-		input wire clk
-	);
-		//For each policy, we need define types for the state machines
-		localparam
-			POLICY_STATE_ab_a_a0 = 0,
-			POLICY_STATE_ab_a_a1 = 1,
-			POLICY_STATE_ab_a_violation = 2;
+	input wire clk
+);
 
-		reg A = 0; // Maybe remove these?
-		reg B = 0;
+	//For each policy, we need define types for the state machines
+	localparam
+		POLICY_STATE_ab_a_a0 = 0,
+		POLICY_STATE_ab_a_a1 = 1,
+		POLICY_STATE_ab_a_violation = 2;
 
-		//For each policy, we need a reg for the state machine
-		reg [1:0] ab_policy_a_c_state = 0;
-		reg [1:0] ab_policy_a_n_state = 0;
+	reg A = 0;
+	reg B = 0;
+	reg [1:0] recoveryRef = 0;
 
-		initial begin
-			// A = 0; Maybe needed?? If transition module outputs ctrl sigs
-			// B = 0;
-			ab_policy_a_c_state = 0;
-			ab_policy_a_n_state = 0;
-		end
+	always @* begin
+		// Default no change to inputs/outputs (transparency) 
+		A = A_ctp_in;
+		B = B_ctp_in;
 
-		always @(posedge clk)
-		begin
-			ab_policy_a_c_state = ab_policy_a_n_state;
+		recoveryRef	= 0;
 
-			//increment timers/clocks
-			//internal vars
-			
-		end
+		// Default no clock reset
 
-		always @* begin
-			A = A_ctp_final;
-			B = B_ctp_final;
-
-			//transTaken_ab_policy_a = 0;
-			//select transition to advance state
-			case(ab_policy_a_c_state)
-				POLICY_STATE_ab_a_a0: begin
-					
-					if (A) begin
-						//transition a0 -> a1 on ( A )
-						ab_policy_a_n_state = POLICY_STATE_ab_a_a1;
-						//set expressions
-						
-						//transTaken_ab_policy_a = 1;
-					end 
-					else if (!(A) && B) begin
-						//transition a0 -> violation on (!A and B)
-						ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
-						//set expressions
-						
-						//transTaken_ab_policy_a = 1;
-					end 
-					else if (!(A) && !(B)) begin
-						//transition a0 -> violation on (!A and !B)
-						ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
-						//set expressions
-						
-						//transTaken_ab_policy_a = 1;
-					end  else begin
-						//only possible in a violation
-						ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
-						//transTaken_ab_policy_a = 1;
-					end
-				end
-				POLICY_STATE_ab_a_a1: begin
-					
-					if (!(A)) begin
-						//transition a1 -> a0 on ( !A )
-						ab_policy_a_n_state = POLICY_STATE_ab_a_a0;
-						//set expressions
-						
-						//transTaken_ab_policy_a = 1;
-					end 
-					else if (A && B) begin
-						//transition a1 -> violation on (A and B)
-						ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
-						//set expressions
-						
-						//transTaken_ab_policy_a = 1;
-					end 
-					else if (A && !(B)) begin
-						//transition a1 -> violation on (A and !B)
-						ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
-						//set expressions
-						
-						//transTaken_ab_policy_a = 1;
-					end  else begin
-						//only possible in a violation
-						ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
-						//transTaken_ab_policy_a = 1;
-					end
-				end
+		//output policies
+			//OUTPUT POLICY a BEGIN 
+		
+		case(ab_policy_a_state_in)
+			POLICY_STATE_ab_a_a0: begin
 				
-				default begin
-					//if we are here, we're in the violation state
-					//the violation state permanently stays in violation
+				if (!(A) && B) begin
+					//transition a0 -> violation on (!A and B)
+					//select a transition to solve the problem
+					
+					//Selected non-violation transition "a0 -> a1 on ( A )" and action is required
+					A = 1;
+
+					recoveryRef = 1;
+					
+				end 
+				if (!(A) && !(B)) begin
+					//transition a0 -> violation on (!A and !B)
+					//select a transition to solve the problem
+					
+					//Selected non-violation transition "a0 -> a1 on ( A )" and action is required
+					A = 1;
+
+					recoveryRef = 2;
+
+					
+				end 
+			end
+			POLICY_STATE_ab_a_a1: begin
+				
+				if (A && B) begin
+					//transition a1 -> violation on (A and B)
+					//select a transition to solve the problem
+					
+					//Selected non-violation transition "a1 -> a0 on ( !A )" and action is required
+					A = 0;
+
+					recoveryRef = 3;
+					
+					
+				end 
+				if (A && !(B)) begin
+					//transition a1 -> violation on (A and !B)
+					//select a transition to solve the problem
+					
+					//Selected non-violation transition "a1 -> a0 on ( !A )" and action is required
+					A = 0;
+
+					recoveryRef = 4;
+
+					
+				end 
+			end
+			
+		endcase
+		//OUTPUT POLICY a END
+
+		// Check if any enforcement action required for this policy
+		// TODO: Move this to within each enforcement action (when edit required set no_edit to false)
+		// if ((A === A_ctp_in) & (B === B_ctp_in)) begin
+		// 	policy_a_no_edit <= 1;
+		// end else begin
+		// 	policy_a_no_edit <= 0;
+		// end
+		
+		// Post input enforced 
+		
+		// Post output enforced 
+		A_ctp_out = A;
+		B_ctp_out = B;
+		
+	end
+	assign ab_policy_a_output_recovery_ref = recoveryRef;
+
+endmodule
+
+module F_combinatorialVerilog_ab_policy_a_transition(
+	input wire A_ctp_final,
+	input wire B_ctp_final,
+
+	output wire [1:0] ab_policy_a_state_out,
+
+	input wire clk
+);
+	//For each policy, we need define types for the state machines
+	localparam
+		POLICY_STATE_ab_a_a0 = 0,
+		POLICY_STATE_ab_a_a1 = 1,
+		POLICY_STATE_ab_a_violation = 2;
+
+	reg A = 0; // Maybe remove these?
+	reg B = 0;
+
+	//For each policy, we need a reg for the state machine
+	reg [1:0] ab_policy_a_c_state = 0;
+	reg [1:0] ab_policy_a_n_state = 0;
+
+	initial begin
+		// A = 0; Maybe needed?? If transition module outputs ctrl sigs
+		// B = 0;
+		ab_policy_a_c_state = 0;
+		ab_policy_a_n_state = 0;
+	end
+
+	always @(posedge clk)
+	begin
+		ab_policy_a_c_state = ab_policy_a_n_state;
+
+		//increment timers/clocks
+		//internal vars
+		
+	end
+
+	always @* begin
+		A = A_ctp_final;
+		B = B_ctp_final;
+
+		//transTaken_ab_policy_a = 0;
+		//select transition to advance state
+		case(ab_policy_a_c_state)
+			POLICY_STATE_ab_a_a0: begin
+				
+				if (A) begin
+					//transition a0 -> a1 on ( A )
+					ab_policy_a_n_state = POLICY_STATE_ab_a_a1;
+					//set expressions
+					
+					//transTaken_ab_policy_a = 1;
+				end 
+				else if (!(A) && B) begin
+					//transition a0 -> violation on (!A and B)
+					ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
+					//set expressions
+					
+					//transTaken_ab_policy_a = 1;
+				end 
+				else if (!(A) && !(B)) begin
+					//transition a0 -> violation on (!A and !B)
+					ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
+					//set expressions
+					
+					//transTaken_ab_policy_a = 1;
+				end  else begin
+					//only possible in a violation
 					ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
 					//transTaken_ab_policy_a = 1;
 				end
-			endcase
-		end
-
-		assign ab_policy_a_state_out =  ab_policy_a_c_state;
-
-	endmodule
-
-	
-	module F_combinatorialVerilog_ab_policy_b_input (
-		//inputs (plant to controller)
-
-
-		input wire [1:0] ab_policy_b_state_in,
-
-		input wire clk
-	);
-
-		//For each policy, we need define types for the state machines
-		localparam
-			POLICY_STATE_ab_b_b0 = 0,
-			POLICY_STATE_ab_b_b1 = 1,
-			POLICY_STATE_ab_b_violation = 2;
-
-		//reg recoveryRef = 0;
-		
-		//internal vars
-		
-		// initial begin
-		// 	policy_a_no_edit = 1;
-		// end
-
-		always @* begin
-			
-			// Default no change to inputs/outputs (transparency) 
-
-			// Do we need //recoveryRef default?
-
-			// Default no clock reset
-			
-
-			//input policies
-			
-				//INPUT POLICY a BEGIN 
-				case(ab_policy_b_state_in)
-					POLICY_STATE_ab_b_b0: begin
-						
-					end
-					POLICY_STATE_ab_b_b1: begin
-						
-					end
+			end
+			POLICY_STATE_ab_a_a1: begin
+				
+				if (!(A)) begin
+					//transition a1 -> a0 on ( !A )
+					ab_policy_a_n_state = POLICY_STATE_ab_a_a0;
+					//set expressions
 					
-				endcase
+					//transTaken_ab_policy_a = 1;
+				end 
+				else if (A && B) begin
+					//transition a1 -> violation on (A and B)
+					ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
+					//set expressions
+					
+					//transTaken_ab_policy_a = 1;
+				end 
+				else if (A && !(B)) begin
+					//transition a1 -> violation on (A and !B)
+					ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
+					//set expressions
+					
+					//transTaken_ab_policy_a = 1;
+				end  else begin
+					//only possible in a violation
+					ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
+					//transTaken_ab_policy_a = 1;
+				end
+			end
 			
-			//INPUT POLICY a END
-		end
+			default begin
+				//if we are here, we're in the violation state
+				//the violation state permanently stays in violation
+				ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
+				//transTaken_ab_policy_a = 1;
+			end
+		endcase
+	end
 
-	endmodule
+	assign ab_policy_a_state_out =  ab_policy_a_c_state;
 
-	module F_combinatorialVerilog_ab_policy_b_output (
-		//outputs (controller to plant)
-		input wire  A_ctp_in,
-		output reg  A_ctp_out,
+endmodule
+
+
+module F_combinatorialVerilog_ab_policy_b_input (
+	//inputs (plant to controller)
+
+
+	input wire [1:0] ab_policy_b_state_in,
+
+	input wire clk
+);
+
+	//For each policy, we need define types for the state machines
+	localparam
+		POLICY_STATE_ab_b_b0 = 0,
+		POLICY_STATE_ab_b_b1 = 1,
+		POLICY_STATE_ab_b_violation = 2;
+
+	//reg recoveryRef = 0;
+	
+	//internal vars
+	
+	// initial begin
+	// 	policy_a_no_edit = 1;
+	// end
+
+	always @* begin
 		
-		input wire  B_ctp_in,
-		output reg  B_ctp_out,
+		// Default no change to inputs/outputs (transparency) 
 
-		input wire [1:0] ab_policy_b_state_in,
+		// Do we need //recoveryRef default?
 
-		input wire clk
-	);
-		//For each policy, we need define types for the state machines
-		localparam
-			POLICY_STATE_ab_b_b0 = 0,
-			POLICY_STATE_ab_b_b1 = 1,
-			POLICY_STATE_ab_b_violation = 2;
+		// Default no clock reset
+		
 
-		reg A = 0;
-		reg B = 0;
-
-		always @* begin
-			// Default no change to inputs/outputs (transparency) 
-			A = A_ctp_in;
-			B = B_ctp_in;
-
-			//output policies
-			//OUTPUT POLICY b BEGIN 
-			
+		//input policies
+		
+			//INPUT POLICY a BEGIN 
 			case(ab_policy_b_state_in)
 				POLICY_STATE_ab_b_b0: begin
 					
-					if (A && !(B)) begin
-						//transition b0 -> violation on (A and !B)
-						//select a transition to solve the problem
-						
-						//Selected non-violation transition "b0 -> b1 on ( B )" and action is required
-						B = 1;
-						
-					end 
-					if (!(A) && !(B)) begin
-						//transition b0 -> violation on (!A and !B)
-						//select a transition to solve the problem
-						
-						//Selected non-violation transition "b0 -> b1 on ( B )" and action is required
-						B = 1;
-						
-					end 
 				end
 				POLICY_STATE_ab_b_b1: begin
 					
-					if (A && B) begin
-						//transition b1 -> violation on (A and B)
-						//select a transition to solve the problem
-						
-						//Selected non-violation transition "b1 -> b0 on ( !B )" and action is required
-						B = 0;
-						
-					end 
-					if (!(A) && B) begin
-						//transition b1 -> violation on (!A and B)
-						//select a transition to solve the problem
-						
-						//Selected non-violation transition "b1 -> b0 on ( !B )" and action is required
-						B = 0;
-						
-					end 
 				end
 				
 			endcase
-			
-			//OUTPUT POLICY b END
+		
+		//INPUT POLICY a END
+	end
 
-			// TODO: Move this to within each enforcement action (when edit required set no_edit to false)
-			// if ((A === A_ctp_in) & (B === B_ctp_in)) begin
-			// 	policy_b_no_edit <= 1;
-			// end else begin
-			// 	policy_b_no_edit <= 0;
-			// end
-			
-			// Post input enforced 
-			
-			// Post output enforced 
-			A_ctp_out = A;
-			B_ctp_out = B;
-		end
-	endmodule
+endmodule
 
-	module F_combinatorialVerilog_ab_policy_b_transition (
-		input wire A_ctp_final,
-		input wire B_ctp_final,
+module F_combinatorialVerilog_ab_policy_b_output (
+	//outputs (controller to plant)
+	input wire  A_ctp_in,
+	output reg  A_ctp_out,
+	
+	input wire  B_ctp_in,
+	output reg  B_ctp_out,
 
-		output wire [1:0] ab_policy_b_state_out,
+	input wire [1:0] ab_policy_b_state_in,
 
-		input wire clk
-	);
+	output reg [1:0] ab_policy_b_output_recovery_ref,
 
-		//For each policy, we need define types for the state machines
-		localparam
-			POLICY_STATE_ab_b_b0 = 0,
-			POLICY_STATE_ab_b_b1 = 1,
-			POLICY_STATE_ab_b_violation = 2;
+	input wire clk
+);
+	//For each policy, we need define types for the state machines
+	localparam
+		POLICY_STATE_ab_b_b0 = 0,
+		POLICY_STATE_ab_b_b1 = 1,
+		POLICY_STATE_ab_b_violation = 2;
 
-		reg A = 0; // Maybe remove these?
-		reg B = 0;
+	reg A = 0;
+	reg B = 0;
+	reg [1:0] recoveryRef = 0;
 
-		//For each policy, we need a reg for the state machine
-		reg [1:0] ab_policy_b_c_state = 0;
-		reg [1:0] ab_policy_b_n_state = 0;
+	always @* begin
+		// Default no change to inputs/outputs (transparency) 
+		A = A_ctp_in;
+		B = B_ctp_in;
+		recoveryRef	= 0;
 
-		initial begin
-			// A = 0; Maybe needed?? If transition module outputs ctrl sigs
-			// B = 0;
-			ab_policy_b_c_state = 0;
-			ab_policy_b_n_state = 0;
-		end
-
-		always @(posedge clk)
-		begin
-			ab_policy_b_c_state = ab_policy_b_n_state;
-
-			//increment timers/clocks
-			//internal vars
-			
-		end
-
-		always @* begin
-			A = A_ctp_final;
-			B = B_ctp_final;
-
-			//transTaken_ab_policy_a = 0;
-			//select transition to advance state
-			case(ab_policy_b_c_state)
-				POLICY_STATE_ab_b_b0: begin
-					
-					if (B) begin
-						//transition b0 -> b1 on ( B )
-						ab_policy_b_n_state = POLICY_STATE_ab_b_b1;
-						//set expressions
-						
-						//transTaken_ab_policy_b = 1;
-					end 
-					else if (A && !(B)) begin
-						//transition b0 -> violation on (A and !B)
-						ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
-						//set expressions
-						
-						//transTaken_ab_policy_b = 1;
-					end 
-					else if (!(A) && !(B)) begin
-						//transition b0 -> violation on (!A and !B)
-						ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
-						//set expressions
-						
-						//transTaken_ab_policy_b = 1;
-					end  else begin
-						//only possible in a violation
-						ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
-						//transTaken_ab_policy_b = 1;
-					end
-				end
-				POLICY_STATE_ab_b_b1: begin
-					
-					if (!(B)) begin
-						//transition b1 -> b0 on ( !B )
-						ab_policy_b_n_state = POLICY_STATE_ab_b_b0;
-						//set expressions
-						
-						//transTaken_ab_policy_b = 1;
-					end 
-					else if (A && B) begin
-						//transition b1 -> violation on (A and B)
-						ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
-						//set expressions
-						
-						//transTaken_ab_policy_b = 1;
-					end 
-					else if (!(A) && B) begin
-						//transition b1 -> violation on (!A and B)
-						ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
-						//set expressions
-						
-						//transTaken_ab_policy_b = 1;
-					end  else begin
-						//only possible in a violation
-						ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
-						//transTaken_ab_policy_b = 1;
-					end
-				end
+		//output policies
+		//OUTPUT POLICY b BEGIN 
+		
+		case(ab_policy_b_state_in)
+			POLICY_STATE_ab_b_b0: begin
 				
-				default begin
-					//if we are here, we're in the violation state
-					//the violation state permanently stays in violation
+				if (A && !(B)) begin
+					//transition b0 -> violation on (A and !B)
+					//select a transition to solve the problem
+					
+					//Selected non-violation transition "b0 -> b1 on ( B )" and action is required
+					B = 1;
+
+					recoveryRef = 1;
+					
+				end 
+				if (!(A) && !(B)) begin
+					//transition b0 -> violation on (!A and !B)
+					//select a transition to solve the problem
+					
+					//Selected non-violation transition "b0 -> b1 on ( B )" and action is required
+					B = 1;
+					
+					recoveryRef = 2;
+				end 
+			end
+			POLICY_STATE_ab_b_b1: begin
+				
+				if (A && B) begin
+					//transition b1 -> violation on (A and B)
+					//select a transition to solve the problem
+					
+					//Selected non-violation transition "b1 -> b0 on ( !B )" and action is required
+					B = 0;
+					
+					recoveryRef = 3;
+				end 
+				if (!(A) && B) begin
+					//transition b1 -> violation on (!A and B)
+					//select a transition to solve the problem
+					
+					//Selected non-violation transition "b1 -> b0 on ( !B )" and action is required
+					B = 0;
+					
+					recoveryRef = 4;
+				end 
+			end
+			
+		endcase
+		
+		//OUTPUT POLICY b END
+
+		// TODO: Move this to within each enforcement action (when edit required set no_edit to false)
+		// if ((A === A_ctp_in) & (B === B_ctp_in)) begin
+		// 	policy_b_no_edit <= 1;
+		// end else begin
+		// 	policy_b_no_edit <= 0;
+		// end
+		
+		// Post input enforced 
+		
+		// Post output enforced 
+		A_ctp_out = A;
+		B_ctp_out = B;
+		ab_policy_b_output_recovery_ref = recoveryRef;
+	end
+endmodule
+
+module F_combinatorialVerilog_ab_policy_b_transition (
+	input wire A_ctp_final,
+	input wire B_ctp_final,
+
+	output wire [1:0] ab_policy_b_state_out,
+
+	input wire clk
+);
+
+	//For each policy, we need define types for the state machines
+	localparam
+		POLICY_STATE_ab_b_b0 = 0,
+		POLICY_STATE_ab_b_b1 = 1,
+		POLICY_STATE_ab_b_violation = 2;
+
+	reg A = 0; // Maybe remove these?
+	reg B = 0;
+
+	//For each policy, we need a reg for the state machine
+	reg [1:0] ab_policy_b_c_state = 0;
+	reg [1:0] ab_policy_b_n_state = 0;
+
+	initial begin
+		// A = 0; Maybe needed?? If transition module outputs ctrl sigs
+		// B = 0;
+		ab_policy_b_c_state = 0;
+		ab_policy_b_n_state = 0;
+	end
+
+	always @(posedge clk)
+	begin
+		ab_policy_b_c_state = ab_policy_b_n_state;
+
+		//increment timers/clocks
+		//internal vars
+		
+	end
+
+	always @* begin
+		A = A_ctp_final;
+		B = B_ctp_final;
+
+		//transTaken_ab_policy_a = 0;
+		//select transition to advance state
+		case(ab_policy_b_c_state)
+			POLICY_STATE_ab_b_b0: begin
+				
+				if (B) begin
+					//transition b0 -> b1 on ( B )
+					ab_policy_b_n_state = POLICY_STATE_ab_b_b1;
+					//set expressions
+					
+					//transTaken_ab_policy_b = 1;
+				end 
+				else if (A && !(B)) begin
+					//transition b0 -> violation on (A and !B)
+					ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
+					//set expressions
+					
+					//transTaken_ab_policy_b = 1;
+				end 
+				else if (!(A) && !(B)) begin
+					//transition b0 -> violation on (!A and !B)
+					ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
+					//set expressions
+					
+					//transTaken_ab_policy_b = 1;
+				end  else begin
+					//only possible in a violation
 					ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
 					//transTaken_ab_policy_b = 1;
 				end
-			endcase
-		end
+			end
+			POLICY_STATE_ab_b_b1: begin
+				
+				if (!(B)) begin
+					//transition b1 -> b0 on ( !B )
+					ab_policy_b_n_state = POLICY_STATE_ab_b_b0;
+					//set expressions
+					
+					//transTaken_ab_policy_b = 1;
+				end 
+				else if (A && B) begin
+					//transition b1 -> violation on (A and B)
+					ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
+					//set expressions
+					
+					//transTaken_ab_policy_b = 1;
+				end 
+				else if (!(A) && B) begin
+					//transition b1 -> violation on (!A and B)
+					ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
+					//set expressions
+					
+					//transTaken_ab_policy_b = 1;
+				end  else begin
+					//only possible in a violation
+					ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
+					//transTaken_ab_policy_b = 1;
+				end
+			end
+			
+			default begin
+				//if we are here, we're in the violation state
+				//the violation state permanently stays in violation
+				ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
+				//transTaken_ab_policy_b = 1;
+			end
+		endcase
+	end
 
-		assign ab_policy_b_state_out =  ab_policy_b_c_state;
+	assign ab_policy_b_state_out =  ab_policy_b_c_state;
 
-	endmodule
+endmodule
 
 
-	
+
 
 // Merge blocks for each input and output
 //merge inputs (plant to controller)
@@ -614,93 +628,5 @@ module merge_B (
 		B_ctp_out_final <= (B_none_care)? B_env_delay_2: B_enf_combined;
 	end
 
-endmodule
-
-
-module parallel_F_ab(
-
-		//inputs (plant to controller)
-		
-		//outputs (controller to plant)
-		A_ctp,
-		OUTPUT_A_ctp_enf_final,
-		B_ctp,
-		OUTPUT_B_ctp_enf_final,
-		
-		//helper outputs//ab_policy_a_state_out,//ab_policy_b_state_out,
-
-		clk
-	);
-
-	input wire clk;
-	
-
-	
-	input wire A_ctp;
-	wire [1:0] A_ctp_enf;
-	wire [1:0] A_no_edit_enf;
-	wire OUTPUT_A_enf_combined;
-	wire OUTPUT_A_none_care;
-	output wire OUTPUT_A_ctp_enf_final;
-	
-	input wire B_ctp;
-	wire [1:0] B_ctp_enf;
-	wire [1:0] B_no_edit_enf;
-	wire OUTPUT_B_enf_combined;
-	wire OUTPUT_B_none_care;
-	output wire OUTPUT_B_ctp_enf_final;
-	
-
-	//helper outputs//output wire [1:0] ab_policy_a_state_out;//output wire [1:0] ab_policy_b_state_out;
-	
-	
-	merge_A instance_merge_A(
-		.A_ctp_in(A_ctp),
-		.A_ctp_enf(A_ctp_enf),
-		.A_no_edit_enf(A_no_edit_enf),
-		.A_enf_combined(OUTPUT_A_enf_combined),
-		.A_none_care(OUTPUT_A_none_care),
-		.A_ctp_out_final(OUTPUT_A_ctp_enf_final)
-	);
-	merge_B instance_merge_B(
-		.B_ctp_in(B_ctp),
-		.B_ctp_enf(B_ctp_enf),
-		.B_no_edit_enf(B_no_edit_enf),
-		.B_enf_combined(OUTPUT_B_enf_combined),
-		.B_none_care(OUTPUT_B_none_care),
-		.B_ctp_out_final(OUTPUT_B_ctp_enf_final)
-	);
-	
-
-	
-	F_combinatorialVerilog_ab_policy_a instance_policy_a(
-		
-		.A_ctp_in(A_ctp),
-		.A_ctp_out(A_ctp_enf[0]),
-		.A_no_edit(A_no_edit_enf[0]),
-		
-		.B_ctp_in(B_ctp),
-		.B_ctp_out(B_ctp_enf[0]),
-		.B_no_edit(B_no_edit_enf[0]),
-		
-		//.ab_policy_a_state_out(ab_policy_a_state_out),
-		.clk(clk)
-		);
-	
-	F_combinatorialVerilog_ab_policy_b instance_policy_b(
-		
-		.A_ctp_in(A_ctp),
-		.A_ctp_out(A_ctp_enf[1]),
-		.A_no_edit(A_no_edit_enf[1]),
-		
-		.B_ctp_in(B_ctp),
-		.B_ctp_out(B_ctp_enf[1]),
-		.B_no_edit(B_no_edit_enf[1]),
-		
-		//.ab_policy_b_state_out(ab_policy_b_state_out),
-		.clk(clk)
-		);
-	
-	
 endmodule
 
