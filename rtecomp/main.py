@@ -469,10 +469,9 @@ def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplat
         recoveryKeyTag.append(row["recoveryKey"])
 
         for k in row:
-            if (k != "recovery") & (k != "recoveryKey"):
+            if (k != "recovery") & (k != "recoveryKey") & (k != "recoveryValue"):
                 # Policy
-                pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]))
-                pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]))
+                pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]), RecoveryValue=str(row['recoveryValue'][k.capitalize()]))
                 rowTag.append(pRefTag)
 
         # recoveryTag = bs_data.new_tag("Row")
@@ -642,5 +641,6 @@ for row in rowsExample:
     row["recoveryKey"] = recoveryKey 
 
     row["recovery"] = list(intersection.keys())[0]
+    row["recoveryValue"] = intersection[list(intersection.keys())[0]]
 
 writeNewXML(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate, rowsExample)
