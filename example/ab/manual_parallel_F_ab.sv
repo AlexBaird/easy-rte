@@ -153,9 +153,9 @@ module F_combinatorialVerilog_ab_policy_a_output(
 		// Check if any enforcement action required for this policy
 		// TODO: Move this to within each enforcement action (when edit required set no_edit to false)
 		// if ((A === A_ctp_in) & (B === B_ctp_in)) begin
-		// 	policy_a_no_edit <= 1;
+		// 	policy_a_no_edit = 1;
 		// end else begin
-		// 	policy_a_no_edit <= 0;
+		// 	policy_a_no_edit = 0;
 		// end
 		
 		// Post input enforced 
@@ -421,9 +421,9 @@ module F_combinatorialVerilog_ab_policy_b_output (
 
 		// TODO: Move this to within each enforcement action (when edit required set no_edit to false)
 		// if ((A === A_ctp_in) & (B === B_ctp_in)) begin
-		// 	policy_b_no_edit <= 1;
+		// 	policy_b_no_edit = 1;
 		// end else begin
-		// 	policy_b_no_edit <= 0;
+		// 	policy_b_no_edit = 0;
 		// end
 		
 		// Post input enforced 
@@ -439,7 +439,7 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 	input wire A_ctp_final,
 	input wire B_ctp_final,
 
-	output wire [1:0] ab_policy_b_state_out,
+	output reg [1:0] ab_policy_b_state_out,
 
 	input wire clk
 	);
@@ -473,7 +473,7 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 		
 	end
 
-	always @* begin
+	always @(A_ctp_final, B_ctp_final) begin
 		A = A_ctp_final;
 		B = B_ctp_final;
 
@@ -569,81 +569,81 @@ module F_LUT_Output_Edit (
 	reg A = 0;
 	reg B = 0;
 
-	initial begin
-		A_ctp_out = 0;
-		B_ctp_out = 0;
-	end
+	// initial begin
+	// 	A_ctp_out = 0;
+	// 	B_ctp_out = 0;
+	// end
 
 	always @* begin
 		case(recovery_key)
 			6'b001001: begin
-				A <= 1;
-				B <= 1;
+				A = 1;
+				B = 1;
 				end
 			6'b010001: begin
-				A <= 1;
-				B <= 1;
+				A = 1;
+				B = 1;
 				end
 			6'b011001: begin
-				A <= 0;
-				B <= 1;
+				A = 0;
+				B = 1;
 				end
 			6'b100001: begin
-				A <= 0;
-				B <= 1;
+				A = 0;
+				B = 1;
 				end
 			6'b001010: begin
-				A <= 1;
-				B <= 1;
+				A = 1;
+				B = 1;
 				end
 			6'b001011: begin
-				A <= 1;
-				B <= 0;
+				A = 1;
+				B = 0;
 				end
 			6'b001100: begin
-				A <= 1;
-				B <= 0;
+				A = 1;
+				B = 0;
 				end
 			6'b010010: begin
-				A <= 1;
-				B <= 1;
+				A = 1;
+				B = 1;
 				end
 			6'b010011: begin
-				A <= 1;
-				B <= 0;
+				A = 1;
+				B = 0;
 				end
 			6'b010100: begin
-				A <= 1;
-				B <= 0;
+				A = 1;
+				B = 0;
 				end
 			6'b011010: begin
-				A <= 0;
-				B <= 1;
+				A = 0;
+				B = 1;
 				end
 			6'b011011: begin
-				A <= 0;
-				B <= 0;
+				A = 0;
+				B = 0;
 				end
 			6'b011100: begin
-				A <= 0;
-				B <= 0;
+				A = 0;
+				B = 0;
 				end
 			6'b100010: begin
-				A <= 0;
-				B <= 1;
+				A = 0;
+				B = 1;
 				end
 			6'b100011: begin
-				A <= 0;
-				B <= 0;
+				A = 0;
+				B = 0;
 				end
 			6'b100100: begin
-				A <= 0;
-				B <= 0;
+				A = 0;
+				B = 0;
 				end
 			default:
 				begin
-					A <= A_ctp_in;
-					B <= B_ctp_in;
+					A = A_ctp_in;
+					B = B_ctp_in;
 				end
 		endcase
 
@@ -653,88 +653,4 @@ module F_LUT_Output_Edit (
 
 endmodule
 
-
-// Merge blocks for each input and output
-//merge inputs (plant to controller)
-
-//merge outputs (controller to plant)
-module merge_A (
-		input wire A_ctp_in, // original environment signal
-		input wire [1:0] A_ctp_enf,
-		input wire [1:0] A_no_edit_enf,
-		output reg A_enf_combined,
-		output reg A_none_care,
-		output reg A_ctp_out_final
-	);
-
-	initial begin
-		A_enf_combined = 0;
-		A_none_care = 0;
-		A_ctp_out_final = 0;
-	end
-
-	always@(A_ctp_enf, A_no_edit_enf)	begin
-		// OR all enforcer output
-		A_enf_combined <= |A_ctp_enf;
-		
-		// AND the don't cares (to figure out if none care)
-		A_none_care <= &A_no_edit_enf;
-
-	end
-
-	reg A_env_delay;
-	reg A_env_delay_2;
-	always @(A_ctp_in) begin
-		A_env_delay <= A_ctp_in;
-	end
-	always @(A_env_delay) begin
-		A_env_delay_2 <= A_env_delay;
-	end
-
-	// Mux to select original if none care
-	always @(A_enf_combined, A_none_care, A_env_delay_2) begin
-		A_ctp_out_final <= (A_none_care)? A_env_delay_2: A_enf_combined;
-	end
-
-endmodule
-
-module merge_B (
-		input wire B_ctp_in, // original environment signal
-		input wire [1:0] B_ctp_enf,
-		input wire [1:0] B_no_edit_enf,
-		output reg B_enf_combined,
-		output reg B_none_care,
-		output reg B_ctp_out_final
-	);
-
-	initial begin
-		B_enf_combined = 0;
-		B_none_care = 0;
-		B_ctp_out_final = 0;
-	end
-
-	always@(B_ctp_enf, B_no_edit_enf)	begin
-		// OR all enforcer output
-		B_enf_combined <= |B_ctp_enf;
-		
-		// AND the don't cares (to figure out if none care)
-		B_none_care <= &B_no_edit_enf;
-
-	end
-
-	reg B_env_delay;
-	reg B_env_delay_2;
-	always @(B_ctp_in) begin
-		B_env_delay <= B_ctp_in;
-	end
-	always @(B_env_delay) begin
-		B_env_delay_2 <= B_env_delay;
-	end
-
-	// Mux to select original if none care
-	always @(B_enf_combined, B_none_care, B_env_delay_2) begin
-		B_ctp_out_final <= (B_none_care)? B_env_delay_2: B_enf_combined;
-	end
-
-endmodule
 
