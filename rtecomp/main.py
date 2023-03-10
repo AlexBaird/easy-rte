@@ -465,16 +465,20 @@ def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplat
 
         recoveryTag = bs_data.new_tag("Recovery")
         recoveryTag.append(row["recovery"])
+        recoveryKeyTag = bs_data.new_tag("RecoveryKey")
+        recoveryKeyTag.append(row["recoveryKey"])
 
         for k in row:
-            if k != "recovery":
+            if (k != "recovery") & (k != "recoveryKey"):
                 # Policy
+                pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]))
                 pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]))
                 rowTag.append(pRefTag)
 
         # recoveryTag = bs_data.new_tag("Row")
 
         rowTag.append(recoveryTag)
+        rowTag.append(recoveryKeyTag)
         selectLUTTag.append(rowTag)
 
     topEnfFnTag.append(selectLUTTag)
@@ -573,8 +577,10 @@ for policy in policies:
     rowTemplate[policy] = 1 # Changed 0 here to 1 to remove don't cares
 
 numberRowsExpected = 1
+recoveryKeyLength = {}
 for policy in policies:
     numberRowsExpected = numberRowsExpected * (len(policies[policy])) # Removed +1 here to remove don't cares
+    recoveryKeyLength[policy] = len('{0:b}'.format(len(policies[policy])))
 
 rowsExample = []
 rowsExample.append(rowTemplate)
@@ -624,6 +630,16 @@ for row in rowsExample:
    
     # TODO: Then do a minEdit
     selectedRecovery = intersection[list(intersection.keys())[0]] 
+
+    # Get binary recoveryKeys
+    recoveryKey = ""
+    for policy in row:
+        b = '{0:b}'.format(row[policy])
+        # Pad with 0s as required to meet length
+        toPad = recoveryKeyLength[policy] - len(b)
+        b = "0" * toPad + b
+        recoveryKey += b
+    row["recoveryKey"] = recoveryKey 
 
     row["recovery"] = list(intersection.keys())[0]
 
