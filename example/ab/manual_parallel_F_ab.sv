@@ -12,7 +12,7 @@ module F_combinatorialVerilog_ab_policy_a_input(
 	input wire [1:0] ab_policy_a_state_in,
 
 	input wire clk
-);
+	);
 
 	//For each policy, we need define types for the state machines
 	localparam
@@ -65,10 +65,10 @@ module F_combinatorialVerilog_ab_policy_a_output(
 
 	input wire [1:0] ab_policy_a_state_in,
 
-	output wire [1:0] ab_policy_a_output_recovery_ref,
+	output wire [2:0] ab_policy_a_output_recovery_ref,
 
 	input wire clk
-);
+	);
 
 	//For each policy, we need define types for the state machines
 	localparam
@@ -79,6 +79,10 @@ module F_combinatorialVerilog_ab_policy_a_output(
 	reg A = 0;
 	reg B = 0;
 	reg [1:0] recoveryRef = 0;
+
+	initial begin
+		recoveryRef = 0;
+	end
 
 	always @* begin
 		// Default no change to inputs/outputs (transparency) 
@@ -172,7 +176,7 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 	output wire [1:0] ab_policy_a_state_out,
 
 	input wire clk
-);
+	);
 	//For each policy, we need define types for the state machines
 	localparam
 		POLICY_STATE_ab_a_a0 = 0,
@@ -279,7 +283,6 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 
 endmodule
 
-
 module F_combinatorialVerilog_ab_policy_b_input (
 	//inputs (plant to controller)
 
@@ -287,7 +290,7 @@ module F_combinatorialVerilog_ab_policy_b_input (
 	input wire [1:0] ab_policy_b_state_in,
 
 	input wire clk
-);
+	);
 
 	//For each policy, we need define types for the state machines
 	localparam
@@ -340,10 +343,10 @@ module F_combinatorialVerilog_ab_policy_b_output (
 
 	input wire [1:0] ab_policy_b_state_in,
 
-	output reg [1:0] ab_policy_b_output_recovery_ref,
+	output reg [2:0] ab_policy_b_output_recovery_ref,
 
 	input wire clk
-);
+	);
 	//For each policy, we need define types for the state machines
 	localparam
 		POLICY_STATE_ab_b_b0 = 0,
@@ -353,6 +356,10 @@ module F_combinatorialVerilog_ab_policy_b_output (
 	reg A = 0;
 	reg B = 0;
 	reg [1:0] recoveryRef = 0;
+
+	initial begin
+		recoveryRef = 0;
+	end
 
 	always @* begin
 		// Default no change to inputs/outputs (transparency) 
@@ -435,7 +442,7 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 	output wire [1:0] ab_policy_b_state_out,
 
 	input wire clk
-);
+	);
 
 	//For each policy, we need define types for the state machines
 	localparam
@@ -543,7 +550,108 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 
 endmodule
 
+// OUTPUT Select Look Up Table
+// Inputs: recovery references from each policy
+// Outputs: final signals for outputs (in this example A and B)
+module F_LUT_Output_Edit (
+		input wire A_ctp_in,
+		input wire B_ctp_in,
+		input wire [2:0] policy_a_recovery_ref,
+		input wire [2:0] policy_b_recovery_ref,
+		output reg A_ctp_out,
+		output reg B_ctp_out,
+		input wire clk
+	);
 
+	wire [5:0] recovery_key;
+	assign recovery_key = {policy_a_recovery_ref, policy_b_recovery_ref};
+
+	reg A = 0;
+	reg B = 0;
+
+	initial begin
+		A_ctp_out = 0;
+		B_ctp_out = 0;
+	end
+
+	always @* begin
+		case(recovery_key)
+			6'b001001: begin
+				A <= 1;
+				B <= 1;
+				end
+			6'b010001: begin
+				A <= 1;
+				B <= 1;
+				end
+			6'b011001: begin
+				A <= 0;
+				B <= 1;
+				end
+			6'b100001: begin
+				A <= 0;
+				B <= 1;
+				end
+			6'b001010: begin
+				A <= 1;
+				B <= 1;
+				end
+			6'b001011: begin
+				A <= 1;
+				B <= 0;
+				end
+			6'b001100: begin
+				A <= 1;
+				B <= 0;
+				end
+			6'b010010: begin
+				A <= 1;
+				B <= 1;
+				end
+			6'b010011: begin
+				A <= 1;
+				B <= 0;
+				end
+			6'b010100: begin
+				A <= 1;
+				B <= 0;
+				end
+			6'b011010: begin
+				A <= 0;
+				B <= 1;
+				end
+			6'b011011: begin
+				A <= 0;
+				B <= 0;
+				end
+			6'b011100: begin
+				A <= 0;
+				B <= 0;
+				end
+			6'b100010: begin
+				A <= 0;
+				B <= 1;
+				end
+			6'b100011: begin
+				A <= 0;
+				B <= 0;
+				end
+			6'b100100: begin
+				A <= 0;
+				B <= 0;
+				end
+			default:
+				begin
+					A <= A_ctp_in;
+					B <= B_ctp_in;
+				end
+		endcase
+
+		A_ctp_out = A;
+		B_ctp_out = B;
+	end
+
+endmodule
 
 
 // Merge blocks for each input and output

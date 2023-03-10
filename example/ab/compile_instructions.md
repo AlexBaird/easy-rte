@@ -2,7 +2,6 @@
 ## Manual Parallel
 vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition/example/ab/manual_parallel_F_ab.sv
 
-
 ## Test Bench Temp Save Commands
 ### Compile Test Bench
 vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition/example/ab/testbench_manual_parallel_F_ab.sv
@@ -22,6 +21,9 @@ add wave -position end  sim:/testbench_manual_parallel_F_ab/state
 add wave -position end  sim:/testbench_manual_parallel_F_ab/state_b
 add wave -position end  sim:/testbench_manual_parallel_F_ab/ab_policy_a_output_recovery_ref
 add wave -position end  sim:/testbench_manual_parallel_F_ab/ab_policy_b_output_recovery_ref
+add wave -position end  sim:/testbench_manual_parallel_F_ab/A_ctp_out
+add wave -position end  sim:/testbench_manual_parallel_F_ab/B_ctp_out
+add wave -position end  sim:/testbench_manual_parallel_F_ab/instance_LUT/recovery_key
 force -freeze sim:/testbench_manual_parallel_F_ab/clk 1 0, 0 {50 ps} -r 100
 force -freeze sim:/testbench_manual_parallel_F_ab/B_ctp 0 0
 force -freeze sim:/testbench_manual_parallel_F_ab/A_ctp 0 0
