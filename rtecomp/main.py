@@ -436,19 +436,24 @@ def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplat
             pt.append(bs_data.new_tag("Source"))
             pt.Source.append(recovery["location"])
 
-            pt.append(bs_data.new_tag("Destination"))
-            pt.Destination.append("violation")
+            destination = "violation" # Assumed, edited incase of "Default" transition
 
             pt.append(bs_data.new_tag("Condition"))
             # Need to add clock conditions here IFF RELEVANT
             print(recovery["violatingCondition"], recovery["violatingConditionString"])
-            if isClockCondition(recovery["violatingConditionString"]):
+            if (recovery["violatingCondition"] == "NONE"):
+                pt.Condition.append("Default")
+                destination = recovery["location"] # No transition
+            elif isClockCondition(recovery["violatingConditionString"]):
                 # TODO: Extract clock condition PROPERLY (the current implementation will only work for a single)
                 clockCondition = recovery["violatingConditionString"]
                 pt.Condition.append("("+convertBinaryStringToTextCondition(recovery["violatingCondition"], alphabetTemplate) + " and " + clockCondition + ")")
             else:
                 pt.Condition.append(convertBinaryStringToTextCondition(recovery["violatingCondition"], alphabetTemplate))
             # input("Any key to continue")
+
+            pt.append(bs_data.new_tag("Destination"))
+            pt.Destination.append(destination)
 
             recoveryRefTag = bs_data.new_tag("RecoveryReference")
             recoveryRefTag.append(str(recovery["violationRef"]))
@@ -533,6 +538,7 @@ policies = {}
 for policy in originalXMLRoot.iter("Policy"):
     allViolationTransitions = []
     policyViolationCount = 0
+    locations = []
     for transition in policy.iter('PTransition'):
         for child in transition.iter('Recover'):
             print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
@@ -540,20 +546,43 @@ for policy in originalXMLRoot.iter("Policy"):
             print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
             print("Violation Conditions: ", violationConditions)
             acceptable = getAcceptableTransitions(violationConditions, alphabetTemplate)
+            location = transition.find("Source").text
 
             for violatingCondition in violationConditions:
                 # Put each violating signal set into table, [policy, reference, location, A, B, C, acceptable resolutions] 
-                policyViolationCount += 1
+                policyViolationCount += 1 # TODO: Review renaming this, not always a violating trans
                 allViolationTransitions.append({
                     "policy":policy.attrib.get("Name"),
                     "violationRef":policyViolationCount,
-                    "location":transition.find("Source").text,
+                    "location":location,
                     "violatingConditionString":transition.find("Condition").text,
                     "violatingCondition":stripClockConditionsFromKey(violatingCondition, alphabetKeyLength),
                     "acceptableConditions":acceptable
                 })
-            # input("Press any key to continue.")
+
+            if location not in locations:
+                locations.append(location)
+                policyViolationCount += 1 # TODO: Review renaming this
+                allViolationTransitions.append({
+                    "policy":policy.attrib.get("Name"),
+                    "violationRef":policyViolationCount,
+                    "location":location,
+                    "violatingConditionString":"NONE",
+                    "violatingCondition":"NONE",
+                    "acceptableConditions":acceptable
+                })
+
     policies[policy.attrib.get("Name")] = allViolationTransitions
+
+# Add non-violation for each location in each policy 
+# (because there is still some set of acceptable I/O for each policy+location, 
+# and we need to capture this to ensure edit action doesnt inadvertantly violate)
+def getUniqueLocations(policy):
+    locations = []
+    for violation in policy:
+        if violation["location"] not in locations:
+            locations.append(violation["location"])
+    return locations
 
 def addRecovery(recoveries, transitionInfo, recovery):
     recoveries[transitionInfo["policy"]+"-"+transitionInfo["location"]+"-"+transitionInfo["violatingCondition"]] = {
@@ -570,15 +599,19 @@ print("==========================================")
 print(" CREATING VIOLATION REF TABLE")
 print("==========================================")
 
+def getNumberLocations(policy):
+    return len(getUniqueLocations(policy))
+
 # Create template to be used as rows (each policy should have a column, which will hold the violation reference)
 rowTemplate = {}
 for policy in policies:
-    rowTemplate[policy] = 1 # Changed 0 here to 1 to remove don't cares
+    rowTemplate[policy] = 1 
 
 numberRowsExpected = 1
 recoveryKeyLength = {}
 for policy in policies:
-    numberRowsExpected = numberRowsExpected * (len(policies[policy])) # Removed +1 here to remove don't cares
+    # numberLocations = getNumberLocations(policies[policy])
+    numberRowsExpected = numberRowsExpected * (len(policies[policy])) 
     recoveryKeyLength[policy] = len('{0:b}'.format(len(policies[policy])))
 
 rowsExample = []
