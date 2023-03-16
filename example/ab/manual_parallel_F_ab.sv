@@ -98,7 +98,8 @@ module F_combinatorialVerilog_ab_policy_a_output(
 		
 		case(ab_policy_a_state_in)
 			POLICY_STATE_ab_a_a0: begin
-				
+				recoveryRef = 3;
+
 				if (!(A) && B) begin
 					//transition a0 -> violation on (!A and B)
 					//select a transition to solve the problem
@@ -122,7 +123,8 @@ module F_combinatorialVerilog_ab_policy_a_output(
 				end 
 			end
 			POLICY_STATE_ab_a_a1: begin
-				
+				recoveryRef = 6;
+
 				if (A && B) begin
 					//transition a1 -> violation on (A and B)
 					//select a transition to solve the problem
@@ -130,7 +132,7 @@ module F_combinatorialVerilog_ab_policy_a_output(
 					//Selected non-violation transition "a1 -> a0 on ( !A )" and action is required
 					A = 0;
 
-					recoveryRef = 3;
+					recoveryRef = 4;
 					
 					
 				end 
@@ -141,7 +143,7 @@ module F_combinatorialVerilog_ab_policy_a_output(
 					//Selected non-violation transition "a1 -> a0 on ( !A )" and action is required
 					A = 0;
 
-					recoveryRef = 4;
+					recoveryRef = 5;
 
 					
 				end 
@@ -279,7 +281,7 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 		endcase
 	end
 
-	assign ab_policy_a_state_out =  ab_policy_a_c_state;
+	assign ab_policy_a_state_out = ab_policy_a_c_state;
 
 endmodule
 
@@ -372,7 +374,8 @@ module F_combinatorialVerilog_ab_policy_b_output (
 		
 		case(ab_policy_b_state_in)
 			POLICY_STATE_ab_b_b0: begin
-				
+				recoveryRef = 3;
+
 				if (A && !(B)) begin
 					//transition b0 -> violation on (A and !B)
 					//select a transition to solve the problem
@@ -394,7 +397,8 @@ module F_combinatorialVerilog_ab_policy_b_output (
 				end 
 			end
 			POLICY_STATE_ab_b_b1: begin
-				
+				recoveryRef = 6;
+
 				if (A && B) begin
 					//transition b1 -> violation on (A and B)
 					//select a transition to solve the problem
@@ -402,7 +406,7 @@ module F_combinatorialVerilog_ab_policy_b_output (
 					//Selected non-violation transition "b1 -> b0 on ( !B )" and action is required
 					B = 0;
 					
-					recoveryRef = 3;
+					recoveryRef = 4;
 				end 
 				if (!(A) && B) begin
 					//transition b1 -> violation on (!A and B)
@@ -411,7 +415,7 @@ module F_combinatorialVerilog_ab_policy_b_output (
 					//Selected non-violation transition "b1 -> b0 on ( !B )" and action is required
 					B = 0;
 					
-					recoveryRef = 4;
+					recoveryRef = 5;
 				end 
 			end
 			
@@ -431,8 +435,9 @@ module F_combinatorialVerilog_ab_policy_b_output (
 		// Post output enforced 
 		A_ctp_out = A;
 		B_ctp_out = B;
-		ab_policy_b_output_recovery_ref = recoveryRef;
 	end
+	assign ab_policy_b_output_recovery_ref = recoveryRef;
+	
 endmodule
 
 module F_combinatorialVerilog_ab_policy_b_transition (
@@ -563,16 +568,16 @@ module F_LUT_Output_Edit (
 		input wire clk
 	);
 
-	wire [5:0] recovery_key;
+	wire [5:0] recovery_key = 0;
 	assign recovery_key = {policy_a_recovery_ref, policy_b_recovery_ref};
 
 	reg A = 0;
 	reg B = 0;
 
-	// initial begin
-	// 	A_ctp_out = 0;
-	// 	B_ctp_out = 0;
-	// end
+	initial begin
+		A_ctp_out = 0;
+		B_ctp_out = 0;
+	end
 
 	always @* begin
 		case(recovery_key)
@@ -596,6 +601,14 @@ module F_LUT_Output_Edit (
 				A = 1;
 				B = 1;
 				end
+			6'b101001: begin
+				A = 0;
+				B = 1;
+				end
+			6'b110001: begin
+				A = 0;
+				B = 1;
+				end
 			6'b001011: begin
 				A = 1;
 				B = 0;
@@ -616,12 +629,36 @@ module F_LUT_Output_Edit (
 				A = 1;
 				B = 0;
 				end
+			6'b001101: begin
+				A = 1;
+				B = 0;
+				end
+			6'b010101: begin
+				A = 1;
+				B = 0;
+				end
 			6'b011010: begin
 				A = 0;
 				B = 1;
 				end
+			6'b010110: begin
+				A = 1;
+				B = 0;
+				end
+			6'b001110: begin
+				A = 1;
+				B = 0;
+				end
 			6'b011011: begin
 				A = 0;
+				B = 0;
+				end
+			6'b011101: begin
+				A = 1;
+				B = 0;
+				end
+			6'b011110: begin
+				A = 1;
 				B = 0;
 				end
 			6'b011100: begin
@@ -637,6 +674,54 @@ module F_LUT_Output_Edit (
 				B = 0;
 				end
 			6'b100100: begin
+				A = 0;
+				B = 0;
+				end
+			6'b100101: begin
+				A = 0;
+				B = 0;
+				end
+			6'b100110: begin
+				A = 0;
+				B = 0;
+				end
+			6'b101010: begin
+				A = 0;
+				B = 1;
+				end
+			6'b101011: begin
+				A = 0;
+				B = 1;
+				end
+			6'b101100: begin
+				A = 0;
+				B = 0;
+				end
+			6'b101101: begin
+				A = 0;
+				B = 0;
+				end
+			6'b101110: begin
+				A = 0;
+				B = 0;
+				end
+			6'b110010: begin
+				A = 1;
+				B = 0;
+				end
+			6'b110011: begin
+				A = 0;
+				B = 1;
+				end
+			6'b110100: begin
+				A = 0;
+				B = 0;
+				end
+			6'b110101: begin
+				A = 0;
+				B = 0;
+				end
+			6'b110110: begin
 				A = 0;
 				B = 0;
 				end

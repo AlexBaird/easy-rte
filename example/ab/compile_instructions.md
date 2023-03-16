@@ -1,3 +1,15 @@
+# Easy RTE Compile AB Example
+## Default XML
+./easy-rte-parser -i example/ab/ab.erte -o example/ab/ab.xml
+## Modify XML to Add Recoveries
+python rtecomp/main.py // Check the file is selected in the script (TODO: input file path)
+## EasyRTE XML to Verilog
+ make verilog_enf PROJECT=ab FILE=ab_modified COMPILEARGS=-synthesis
+
+
+
+
+
 # ModelSim Compile AB Example
 ## Manual Parallel
 vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition/example/ab/manual_parallel_F_ab.sv
@@ -24,6 +36,15 @@ add wave -position end  sim:/testbench_manual_parallel_F_ab/ab_policy_b_output_r
 add wave -position end  sim:/testbench_manual_parallel_F_ab/A_ctp_out
 add wave -position end  sim:/testbench_manual_parallel_F_ab/B_ctp_out
 add wave -position end  sim:/testbench_manual_parallel_F_ab/instance_LUT/recovery_key
+
+add wave -position end  sim:/testbench_manual_parallel_F_ab/instance_trans_a/ab_policy_a_c_state
+add wave -position end  sim:/testbench_manual_parallel_F_ab/instance_trans_a/ab_policy_a_n_state
+add wave -position end  sim:/testbench_manual_parallel_F_ab/instance_trans_a/ab_policy_a_state_out
+
+add wave -position end  sim:/testbench_manual_parallel_F_ab/instance_trans_b/ab_policy_b_c_state
+add wave -position end  sim:/testbench_manual_parallel_F_ab/instance_trans_b/ab_policy_b_n_state
+add wave -position end  sim:/testbench_manual_parallel_F_ab/instance_trans_b/ab_policy_b_state_out
+
 force -freeze sim:/testbench_manual_parallel_F_ab/clk 1 0, 0 {50 ps} -r 100
 force -freeze sim:/testbench_manual_parallel_F_ab/B_ctp 0 0
 force -freeze sim:/testbench_manual_parallel_F_ab/A_ctp 0 0
