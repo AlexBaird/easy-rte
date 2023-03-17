@@ -18,6 +18,7 @@ module F_combinatorialVerilog_ab_policy_a_input(
 	localparam
 		POLICY_STATE_ab_a_a0 = 0,
 		POLICY_STATE_ab_a_a1 = 1,
+		POLICY_STATE_ab_a_a2 = 3,
 		POLICY_STATE_ab_a_violation = 2;
 
 	//reg recoveryRef = 0;
@@ -47,6 +48,9 @@ module F_combinatorialVerilog_ab_policy_a_input(
 				POLICY_STATE_ab_a_a1: begin
 					
 				end
+				POLICY_STATE_ab_a_a2: begin
+					
+				end
 				
 			endcase
 		
@@ -74,17 +78,18 @@ module F_combinatorialVerilog_ab_policy_a_output(
 	localparam
 		POLICY_STATE_ab_a_a0 = 0,
 		POLICY_STATE_ab_a_a1 = 1,
+		POLICY_STATE_ab_a_a2 = 3,
 		POLICY_STATE_ab_a_violation = 2;
 
 	reg A = 0;
 	reg B = 0;
-	reg [1:0] recoveryRef = 0;
+	reg [2:0] recoveryRef = 0;
 
 	initial begin
 		recoveryRef = 0;
 	end
 
-	always @* begin
+	always @(*) begin
 		// Default no change to inputs/outputs (transparency) 
 		A = A_ctp_in;
 		B = B_ctp_in;
@@ -148,7 +153,9 @@ module F_combinatorialVerilog_ab_policy_a_output(
 					
 				end 
 			end
-			
+			POLICY_STATE_ab_a_a2: begin
+
+			end
 		endcase
 		//OUTPUT POLICY a END
 
@@ -183,20 +190,21 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 	localparam
 		POLICY_STATE_ab_a_a0 = 0,
 		POLICY_STATE_ab_a_a1 = 1,
+		POLICY_STATE_ab_a_a2 = 3,
 		POLICY_STATE_ab_a_violation = 2;
 
 	reg A = 0; // Maybe remove these?
 	reg B = 0;
 
 	//For each policy, we need a reg for the state machine
-	reg [1:0] ab_policy_a_c_state = 0;
-	reg [1:0] ab_policy_a_n_state = 0;
+	reg [1:0] ab_policy_a_c_state = POLICY_STATE_ab_a_a2;
+	reg [1:0] ab_policy_a_n_state = POLICY_STATE_ab_a_a2;
 
 	initial begin
 		// A = 0; Maybe needed?? If transition module outputs ctrl sigs
 		// B = 0;
-		ab_policy_a_c_state = 0;
-		ab_policy_a_n_state = 0;
+		ab_policy_a_c_state = POLICY_STATE_ab_a_a2;
+		ab_policy_a_n_state = POLICY_STATE_ab_a_a2;
 	end
 
 	always @(posedge clk)
@@ -271,7 +279,11 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 					//transTaken_ab_policy_a = 1;
 				end
 			end
-			
+			POLICY_STATE_ab_a_a2: begin
+				if (A) begin
+					ab_policy_a_n_state = POLICY_STATE_ab_a_a1;
+				end		
+			end
 			default begin
 				//if we are here, we're in the violation state
 				//the violation state permanently stays in violation
@@ -298,6 +310,7 @@ module F_combinatorialVerilog_ab_policy_b_input (
 	localparam
 		POLICY_STATE_ab_b_b0 = 0,
 		POLICY_STATE_ab_b_b1 = 1,
+		POLICY_STATE_ab_b_b2 = 3,
 		POLICY_STATE_ab_b_violation = 2;
 
 	//reg recoveryRef = 0;
@@ -327,6 +340,9 @@ module F_combinatorialVerilog_ab_policy_b_input (
 				POLICY_STATE_ab_b_b1: begin
 					
 				end
+				POLICY_STATE_ab_b_b2: begin
+					
+				end
 				
 			endcase
 		
@@ -353,17 +369,18 @@ module F_combinatorialVerilog_ab_policy_b_output (
 	localparam
 		POLICY_STATE_ab_b_b0 = 0,
 		POLICY_STATE_ab_b_b1 = 1,
+		POLICY_STATE_ab_b_b2 = 3,
 		POLICY_STATE_ab_b_violation = 2;
 
 	reg A = 0;
 	reg B = 0;
-	reg [1:0] recoveryRef = 0;
+	reg [2:0] recoveryRef = 0;
 
 	initial begin
 		recoveryRef = 0;
 	end
 
-	always @* begin
+	always @(*) begin
 		// Default no change to inputs/outputs (transparency) 
 		A = A_ctp_in;
 		B = B_ctp_in;
@@ -418,7 +435,9 @@ module F_combinatorialVerilog_ab_policy_b_output (
 					recoveryRef = 5;
 				end 
 			end
-			
+			POLICY_STATE_ab_b_b2: begin
+					
+			end
 		endcase
 		
 		//OUTPUT POLICY b END
@@ -453,20 +472,21 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 	localparam
 		POLICY_STATE_ab_b_b0 = 0,
 		POLICY_STATE_ab_b_b1 = 1,
+		POLICY_STATE_ab_b_b2 = 3,
 		POLICY_STATE_ab_b_violation = 2;
 
 	reg A = 0; // Maybe remove these?
 	reg B = 0;
 
 	//For each policy, we need a reg for the state machine
-	reg [1:0] ab_policy_b_c_state = 0;
-	reg [1:0] ab_policy_b_n_state = 0;
+	reg [1:0] ab_policy_b_c_state = POLICY_STATE_ab_b_b2;
+	reg [1:0] ab_policy_b_n_state = POLICY_STATE_ab_b_b2;
 
 	initial begin
 		// A = 0; Maybe needed?? If transition module outputs ctrl sigs
 		// B = 0;
-		ab_policy_b_c_state = 0;
-		ab_policy_b_n_state = 0;
+		ab_policy_b_c_state = POLICY_STATE_ab_b_b2;
+		ab_policy_b_n_state = POLICY_STATE_ab_b_b2;
 	end
 
 	always @(posedge clk)
@@ -478,7 +498,7 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 		
 	end
 
-	always @(A_ctp_final, B_ctp_final) begin
+	always @(*) begin
 		A = A_ctp_final;
 		B = B_ctp_final;
 
@@ -541,7 +561,11 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 					//transTaken_ab_policy_b = 1;
 				end
 			end
-			
+			POLICY_STATE_ab_b_b2: begin
+				if (B) begin
+					ab_policy_b_n_state = POLICY_STATE_ab_b_b1;
+				end
+			end
 			default begin
 				//if we are here, we're in the violation state
 				//the violation state permanently stays in violation
@@ -561,15 +585,15 @@ endmodule
 module F_LUT_Output_Edit (
 		input wire A_ctp_in,
 		input wire B_ctp_in,
-		input wire [2:0] policy_a_recovery_ref,
-		input wire [2:0] policy_b_recovery_ref,
+		input reg [2:0] policy_a_recovery_ref,
+		input reg [2:0] policy_b_recovery_ref,
 		output reg A_ctp_out,
 		output reg B_ctp_out,
 		input wire clk
 	);
 
-	wire [5:0] recovery_key = 0;
-	assign recovery_key = {policy_a_recovery_ref, policy_b_recovery_ref};
+	// wire [5:0] recovery_key = 0;
+	// assign recovery_key = {policy_a_recovery_ref, policy_b_recovery_ref};
 
 	reg A = 0;
 	reg B = 0;
@@ -579,8 +603,8 @@ module F_LUT_Output_Edit (
 		B_ctp_out = 0;
 	end
 
-	always @* begin
-		case(recovery_key)
+	always @(*) begin
+		case({policy_a_recovery_ref, policy_b_recovery_ref})
 			6'b001001: begin
 				A = 1;
 				B = 1;
@@ -650,8 +674,8 @@ module F_LUT_Output_Edit (
 				B = 0;
 				end
 			6'b011011: begin
-				A = 0;
-				B = 0;
+				A = 1;
+				B = 1;
 				end
 			6'b011101: begin
 				A = 1;

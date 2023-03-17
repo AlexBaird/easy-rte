@@ -48,3 +48,15 @@ add wave -position end  sim:/testbench_manual_parallel_F_ab/instance_trans_b/ab_
 force -freeze sim:/testbench_manual_parallel_F_ab/clk 1 0, 0 {50 ps} -r 100
 force -freeze sim:/testbench_manual_parallel_F_ab/B_ctp 0 0
 force -freeze sim:/testbench_manual_parallel_F_ab/A_ctp 0 0
+
+run .1ns
+force -freeze sim:/testbench_manual_parallel_F_ab/A_ctp 1 0
+force -freeze sim:/testbench_manual_parallel_F_ab/B_ctp 1 0
+run .1ns
+force -freeze sim:/testbench_manual_parallel_F_ab/A_ctp 0 0
+force -freeze sim:/testbench_manual_parallel_F_ab/B_ctp 0 0
+run 1ns
+
+force -freeze sim:/testbench_manual_parallel_F_ab/A_ctp 1 0
+force -freeze sim:/testbench_manual_parallel_F_ab/B_ctp 1 0
+run 1ns
