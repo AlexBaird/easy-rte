@@ -6,10 +6,6 @@ python rtecomp/main.py // Check the file is selected in the script (TODO: input 
 ## EasyRTE XML to Verilog
  make verilog_enf PROJECT=ab FILE=ab_modified COMPILEARGS=-synthesis
 
-
-
-
-
 # ModelSim Compile AB Example
 ## Manual Parallel
 vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition/example/ab/manual_parallel_F_ab.sv
@@ -60,3 +56,8 @@ run 1ns
 force -freeze sim:/testbench_manual_parallel_F_ab/A_ctp 1 0
 force -freeze sim:/testbench_manual_parallel_F_ab/B_ctp 1 0
 run 1ns
+
+
+# Easy RTE Verilog Parallel Composition Template
+## Build EasyRTE Local and then Compile AB Example using modified
+make local && make verilog_enf PROJECT=ab FILE=ab_modified COMPILEARGS=-parallelComposition
