@@ -27,7 +27,7 @@ const rteVerilogParallelCompositionTemplate = `
 		
 		//helpful state output input var{{if $polI}},
 		{{end}}
-		//output reg {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state_out,
+		input wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state_in,
 		
 		input wire clk
 		);
@@ -61,20 +61,7 @@ const rteVerilogParallelCompositionTemplate = `
 		{{end}}
 		end
 
-		always @(posedge clk)
-		begin
-			{{$block.Name}}_policy_{{$pol.Name}}_c_state = {{$block.Name}}_policy_{{$pol.Name}}_n_state;
-
-			//increment timers/clocks
-			{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}//internal vars
-			{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}if (reset_{{$var.Name}} === 1) begin
-				{{$var.Name}} = 0;
-			end else begin
-				{{$var.Name}} = {{$var.Name}}{{if $var.IsDTimer}} + 1;
-			end {{end}}{{end}}{{end}}{{end}}
-		end
-
-		always @* begin
+		always @(*) begin
 			// Default no location change
 			{{$block.Name}}_policy_{{$pol.Name}}_n_state = {{$block.Name}}_policy_{{$pol.Name}}_c_state;
 			
@@ -92,6 +79,7 @@ const rteVerilogParallelCompositionTemplate = `
 			{{else}}{{/* this is where the policy comes in */}}	//INPUT POLICY {{$pol.Name}} BEGIN 
 				case({{$block.Name}}_policy_{{$pol.Name}}_c_state)
 					{{range $sti, $st := $pol.States}}` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_{{$st.Name}}: begin
+						// TODO: Set default recovery reference for location
 						{{range $tri, $tr := $pfbEnf.InputPolicy.GetViolationTransitions}}{{if eq $tr.Source $st.Name}}{{/*
 						*/}}
 						if ({{$cond := getVerilogECCTransitionCondition $block (compileExpression $tr.STGuard)}}{{$cond.IfCond}}) begin
@@ -101,80 +89,14 @@ const rteVerilogParallelCompositionTemplate = `
 							{{if $solution.Comment}}//{{$solution.Comment}}{{end}}
 							{{range $soleI, $sole := $solution.Expressions}}{{$sol := getVerilogECCTransitionCondition $block (compileExpression $sole)}}{{$sol.IfCond}};
 							{{end}}
+							// TODO: Set recovery reference
+							
 						end{{end}}{{end}}
 					end
 					{{end}}
 				endcase
 			{{end}}
 			//INPUT POLICY {{$pol.Name}} END{{end}}
-
-			//output policies
-			{{if not $pfbEnf}}//{{$pol.Name}} is broken!
-			{{else}}{{/* this is where the policy comes in */}}	//OUTPUT POLICY {{$pol.Name}} BEGIN 
-				
-				case({{$block.Name}}_policy_{{$pol.Name}}_c_state)
-					{{range $sti, $st := $pol.States}}` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_{{$st.Name}}: begin
-						{{range $tri, $tr := $pfbEnf.OutputPolicy.GetViolationTransitions}}{{if eq $tr.Source $st.Name}}{{/*
-						*/}}
-						if ({{$cond := getVerilogECCTransitionCondition $block (compileExpression $tr.STGuard)}}{{$cond.IfCond}}) begin
-							//transition {{$tr.Source}} -> {{$tr.Destination}} on {{$tr.Condition}}
-							//select a transition to solve the problem
-							{{$solution := $pfbEnf.SolveViolationTransition $tr false}}
-							{{if $solution.Comment}}//{{$solution.Comment}}{{end}}
-							{{range $soleI, $sole := $solution.Expressions}}{{$sol := getVerilogECCTransitionCondition $block (compileExpression $sole)}}{{$sol.IfCond}};
-							{{end}}
-						end {{end}}{{end}}
-					end
-					{{end}}
-				endcase
-
-				//transTaken_{{$block.Name}}_policy_{{$pol.Name}} = 0;
-				//select transition to advance state
-				case({{$block.Name}}_policy_{{$pol.Name}}_c_state)
-					{{range $sti, $st := $pol.States}}` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_{{$st.Name}}: begin
-						{{range $tri, $tr := $pfbEnf.OutputPolicy.GetTransitionsForSource $st.Name}}{{/*
-						*/}}
-						{{if $tri}}else {{end}}if ({{$cond := getVerilogECCTransitionCondition $block (compileExpression $tr.STGuard)}}{{$cond.IfCond}}) begin
-							//transition {{$tr.Source}} -> {{$tr.Destination}} on {{$tr.Condition}}
-							{{$block.Name}}_policy_{{$pol.Name}}_n_state = ` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_{{$tr.Destination}};
-							//set expressions
-							{{range $exi, $ex := $tr.Expressions}}{{if not (equal_str ($ex.Value) "0")}}
-							{{$ex.VarName}} = {{$ex.Value}};{{else}}reset_{{$ex.VarName}} = 1;{{end}}{{end}}
-							//transTaken_{{$block.Name}}_policy_{{$pol.Name}} = 1;
-						end {{end}} else begin
-							//only possible in a violation
-							{{$block.Name}}_policy_{{$pol.Name}}_n_state = ` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_violation;
-							//transTaken_{{$block.Name}}_policy_{{$pol.Name}} = 1;
-						end
-					end
-					{{end}}
-					default begin
-						//if we are here, we're in the violation state
-						//the violation state permanently stays in violation
-						{{$block.Name}}_policy_{{$pol.Name}}_n_state = ` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_violation;
-						//transTaken_{{$block.Name}}_policy_{{$pol.Name}} = 1;
-					end
-				endcase
-			{{end}}
-			//OUTPUT POLICY {{$pol.Name}} END
-
-			// Ground all signals the enf doesnt care about
-			// Inputs{{range $index, $var := $block.InputVars}}
-			if ({{$var.Name}} === {{$var.Name}}_ptc_in) begin
-				{{$var.Name}}_dont_care <= 1;
-				{{$var.Name}} = 0;
-			end else begin
-				{{$var.Name}}_dont_care <= 0;
-			end
-			{{end}}
-			// Outputs{{range $index, $var := $block.OutputVars}}
-			if ({{$var.Name}} === {{$var.Name}}_ctp_in) begin
-				{{$var.Name}}_dont_care <= 1;
-				{{$var.Name}} = 0;
-			end else begin
-				{{$var.Name}}_dont_care <= 0;
-			end
-			{{end}}
 			// Post input enforced 
 			{{range $index, $var := $block.InputVars}}{{$var.Name}}_ptc_out = {{$var.Name}};
 			{{end}}
@@ -197,7 +119,8 @@ const rteVerilogParallelCompositionTemplate = `
 		output reg {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_out,
 		{{end}}
 
-		// TODO State Input
+		// State Input
+		input wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state_in,
 
 		// TODO Recovery Reference Output
 
@@ -229,7 +152,7 @@ const rteVerilogParallelCompositionTemplate = `
 		{{end}}
 		end
 
-		always @* begin
+		always @(*) begin
 			// Default no change to inputs/outputs (transparency) {{range $index, $var := $block.InputVars}}
 			{{$var.Name}} = {{$var.Name}}_ptc_in;
 			{{end}}
@@ -253,6 +176,8 @@ const rteVerilogParallelCompositionTemplate = `
 							{{if $solution.Comment}}//{{$solution.Comment}}{{end}}
 							{{range $soleI, $sole := $solution.Expressions}}{{$sol := getVerilogECCTransitionCondition $block (compileExpression $sole)}}{{$sol.IfCond}};
 							{{end}}
+							// TODO: Set recovery reference
+
 						end {{end}}{{end}}
 					end
 					{{end}}
@@ -267,10 +192,11 @@ const rteVerilogParallelCompositionTemplate = `
 		input wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_final,
 		{{end}}
 
-		// TODO State Output
+		// State Output
+		output wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state_out,
 
 		input wire clk
-	);
+		);
 		
 		//For each policy, we need define types for the state machines
 		localparam
@@ -313,7 +239,7 @@ const rteVerilogParallelCompositionTemplate = `
 			end {{end}}{{end}}{{end}}{{end}}
 		end
 
-		always @* begin
+		always @(*) begin
 			// Default no location change
 			{{$block.Name}}_policy_{{$pol.Name}}_n_state = {{$block.Name}}_policy_{{$pol.Name}}_c_state;
 			
