@@ -476,8 +476,19 @@ def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplat
         for k in row:
             if (k != "recovery") & (k != "recoveryKey") & (k != "recoveryValue"):
                 # Policy
-                pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]), RecoveryValue=str(row['recoveryValue'][k.capitalize()]))
+                pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]))
                 rowTag.append(pRefTag)
+            if (k == "recoveryValue"):
+                for signal in row['recoveryValue']:
+                    pRecoverTag = bs_data.new_tag("Recover")
+                    pSig = bs_data.new_tag("Signal")
+                    pSig.append(signal)
+                    pVal = bs_data.new_tag("Value")
+                    pVal.append(str(row['recoveryValue'][signal]))
+                    pRecoverTag.append(pSig)
+                    pRecoverTag.append(pVal)
+                    rowTag.append(pRecoverTag)
+
 
         # recoveryTag = bs_data.new_tag("Row")
 
