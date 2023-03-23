@@ -1,7 +1,10 @@
 package rtec
 
 import (
+	"encoding/xml"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/PRETgroup/easy-rte/rtedef"
@@ -13,7 +16,7 @@ type VerilogECCTransition CECCTransition
 //getVerilogECCTransitionCondition returns the C "if" condition to use in state machine next state logic and associated events
 // returns "full condition", "associated events"
 func getVerilogECCTransitionCondition(function rtedef.EnforcedFunction, trans string) VerilogECCTransition {
-	if (trans != "Default") {
+	if trans != "Default" {
 		return VerilogECCTransition{IfCond: trans, AssEvents: nil}
 	}
 	return VerilogECCTransition{"Default", nil} // Could do something here to make clearer default and handle in template?
@@ -66,8 +69,83 @@ func getVerilogWidthArrayForType(ctype string) string {
 func isDefault(str string) bool {
 	return str == "Default"
 }
+
+type Recover struct {
+	Signal string `xml:"Signal"`
+	Value  string `xml:"Value"`
+}
+
+type Row struct {
+	// XMLName			xml.Name	`xml:"Row"`
+	Recovery    string    `xml:"Recovery"`
+	RecoveryKey string    `xml:"RecoveryKey"`
+	Recovers     []Recover `xml:"Recover"`
+}
+
+type SelectLUT struct {
+	// XMLName		xml.Name	`xml:"SelectLUT"`
+	Rows []Row `xml:"Row"`
+}
+
+type EnforcedFunction struct {
+	// Interface	string	`xml:"Interface"`
+	// Policies	[]string	`xml:"Policy"`
+	LUT SelectLUT `xml:"SelectLUT"`
+}
+
+func boolStrToIntStr(boolStr string) string {
+	if boolStr == "True" {
+		return "1"
+	} else {
+		return "0"
+	}
+}
+
+func getLUT(blockName string) string {
+	var filename = "example/" + blockName + "/" + blockName + "_modified.xml"
+	fmt.Println(filename)
+
+	// Open our xmlFile
+	xmlFile, err := os.Open(filename)
+	// if we os.Open returns an error then handle it
+	if err != nil {
+		fmt.Println(err)
+		return "error"
+	} else {
+
+		fmt.Println("Successfully Opened " + filename)
+		// defer the closing of our xmlFile so that we can parse it later on
+		defer xmlFile.Close()
+
+		// read our opened xmlFile as a byte array.
+		byteValue, _ := ioutil.ReadAll(xmlFile)
+
+		var q EnforcedFunction
+
+		xml.Unmarshal(byteValue, &q)
+
+		// fmt.Println(q)
+		// fmt.Println(q.LUT)
+		// fmt.Println(q.LUT.Rows)
+
+		// TODO: For each row
+		// Add to case statement!
+		var caseStatement string = ""
+		for _, row := range q.LUT.Rows {
+			caseStatement += "\t" + fmt.Sprint(len(row.RecoveryKey)) + "'b" + row.RecoveryKey + ": begin\n"
+			for _, signal := range row.Recovers {
+				caseStatement += "\t\t" + signal.Signal + " = " + boolStrToIntStr(signal.Value) + ";\n"
+			}
+			caseStatement += "\t\tend\n"
+		}
+		fmt.Println(caseStatement)
+
+		return caseStatement
+	}
+}
+
 func getMaxRecoveryReference(policy rtedef.Policy) int {
-	var maxRecoveryRef uint = 0;
+	var maxRecoveryRef uint = 0
 	for _, transition := range policy.Transitions {
 		if transition.RecoveryReference > maxRecoveryRef {
 			maxRecoveryRef = transition.RecoveryReference

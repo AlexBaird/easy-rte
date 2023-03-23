@@ -301,6 +301,7 @@ module F_LUT_Output_Edit (
 	);
 
 	// TODO: LUT
+	{{getLUT $block.Name}}
 
 endmodule
 
@@ -375,6 +376,7 @@ var verilogParallelCompositionTemplateFuncMap = template.FuncMap{
 	"add1IfClock":                      add1IfClock,
 	"isDefault":                        isDefault,
 	"getMaxRecoveryReference":          getMaxRecoveryReference,
+	"getLUT":         					getLUT,
 
 	"compileExpression": stconverter.VerilogCompileExpression,
 
