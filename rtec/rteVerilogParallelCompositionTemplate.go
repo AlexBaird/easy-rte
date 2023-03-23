@@ -270,6 +270,41 @@ const rteVerilogParallelCompositionTemplate = `
 
 	{{end}}
 
+// INPUT Select Look Up Table
+// Inputs: recovery references from each policy's input module
+// Outputs: final signals for inputs
+module F_LUT_Input_Edit (
+		// Inputs (plant to controller) {{range $index, $var := $block.InputVars}}
+		input wire {{$var.Name}}_ptc_in,
+		output reg {{$var.Name}}_ptc_out, // final
+		{{end}}
+		{{range $polI, $pol := $block.Policies}}input reg {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref,
+		{{end}}
+		input wire clk
+	);
+
+	// TODO: LUT
+	
+endmodule
+	
+// OUTPUT Select Look Up Table
+// Inputs: recovery references from each policy's output module
+// Outputs: final signals for outputs
+module F_LUT_Output_Edit (
+		// Outputs (controller to plant) {{range $index, $var := $block.OutputVars}}
+		input wire {{$var.Name}}_ctp_in,
+		output reg {{$var.Name}}_ctp_out, // final
+		{{end}}
+		{{range $polI, $pol := $block.Policies}}input reg {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref,
+		{{end}}
+		input wire clk
+	);
+
+	// TODO: LUT
+
+endmodule
+
+
 module parallel_F_{{$block.Name}}(
 
 		//inputs (plant to controller){{range $index, $var := $block.InputVars}}
