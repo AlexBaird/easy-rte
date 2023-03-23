@@ -11,6 +11,9 @@ module F_combinatorialVerilog_ab_policy_a_input(
 
 	input wire [1:0] ab_policy_a_state_in,
 
+	// Recovery Reference
+	output wire [2:0] ab_policy_a_input_recovery_ref,
+
 	input wire clk
 	);
 
@@ -21,8 +24,10 @@ module F_combinatorialVerilog_ab_policy_a_input(
 		POLICY_STATE_ab_a_a2 = 3,
 		POLICY_STATE_ab_a_violation = 2;
 
-	//reg recoveryRef = 0;
-	
+
+	// Recovery ref declare and init
+	reg [2:0] recoveryReference = 0;
+
 	//internal vars
 	
 	// initial begin
@@ -33,7 +38,7 @@ module F_combinatorialVerilog_ab_policy_a_input(
 		
 		// Default no change to inputs/outputs (transparency) 
 
-		// Do we need //recoveryRef default?
+		// Do we need //recoveryReference default?
 
 		// Default no clock reset
 		
@@ -56,22 +61,27 @@ module F_combinatorialVerilog_ab_policy_a_input(
 		
 		//INPUT POLICY a END
 	end
+	assign ab_policy_a_input_recovery_ref = recoveryReference;
 
 endmodule
 
-module F_combinatorialVerilog_ab_policy_a_output(
+module F_combinatorialVerilog_ab_policy_a_output (
 	//outputs (controller to plant)
 	input wire  A_ctp_in,
-	output reg  A_ctp_out,
+	// output reg  A_ctp_out,
 	
 	input wire  B_ctp_in,
-	output reg  B_ctp_out,
+	// output reg  B_ctp_out,
 
+
+	// State Input
 	input wire [1:0] ab_policy_a_state_in,
 
+	// Recovery Reference Output
 	output wire [2:0] ab_policy_a_output_recovery_ref,
 
 	input wire clk
+
 	);
 
 	//For each policy, we need define types for the state machines
@@ -81,20 +91,24 @@ module F_combinatorialVerilog_ab_policy_a_output(
 		POLICY_STATE_ab_a_a2 = 3,
 		POLICY_STATE_ab_a_violation = 2;
 
+
 	reg A = 0;
+
 	reg B = 0;
-	reg [2:0] recoveryRef = 0;
+
+	// Recovery ref declare and init
+	reg [2:0] recoveryReference = 0;
 
 	initial begin
-		recoveryRef = 0;
+		recoveryReference = 0;
 	end
 
-	always @(*) begin
+	always @* begin
 		// Default no change to inputs/outputs (transparency) 
 		A = A_ctp_in;
 		B = B_ctp_in;
 
-		recoveryRef	= 0;
+		recoveryReference = 0;
 
 		// Default no clock reset
 
@@ -103,7 +117,8 @@ module F_combinatorialVerilog_ab_policy_a_output(
 		
 		case(ab_policy_a_state_in)
 			POLICY_STATE_ab_a_a0: begin
-				recoveryRef = 3;
+				// Default location recovery reference
+				recoveryReference = 3;
 
 				if (!(A) && B) begin
 					//transition a0 -> violation on (!A and B)
@@ -112,7 +127,8 @@ module F_combinatorialVerilog_ab_policy_a_output(
 					//Selected non-violation transition "a0 -> a1 on ( A )" and action is required
 					A = 1;
 
-					recoveryRef = 1;
+					// Set recovery reference
+					recoveryReference = 1;
 					
 				end 
 				if (!(A) && !(B)) begin
@@ -122,13 +138,14 @@ module F_combinatorialVerilog_ab_policy_a_output(
 					//Selected non-violation transition "a0 -> a1 on ( A )" and action is required
 					A = 1;
 
-					recoveryRef = 2;
-
-					
+					// Set recovery reference
+					recoveryReference = 2;
+	
 				end 
 			end
 			POLICY_STATE_ab_a_a1: begin
-				recoveryRef = 6;
+				// Default location recovery reference
+				recoveryReference = 6;
 
 				if (A && B) begin
 					//transition a1 -> violation on (A and B)
@@ -137,8 +154,8 @@ module F_combinatorialVerilog_ab_policy_a_output(
 					//Selected non-violation transition "a1 -> a0 on ( !A )" and action is required
 					A = 0;
 
-					recoveryRef = 4;
-					
+					// Set recovery reference
+					recoveryReference = 4;
 					
 				end 
 				if (A && !(B)) begin
@@ -148,44 +165,42 @@ module F_combinatorialVerilog_ab_policy_a_output(
 					//Selected non-violation transition "a1 -> a0 on ( !A )" and action is required
 					A = 0;
 
-					recoveryRef = 5;
+					// Set recovery reference
+					recoveryReference = 5;
 
-					
 				end 
 			end
 			POLICY_STATE_ab_a_a2: begin
 
 			end
 		endcase
-		//OUTPUT POLICY a END
 
-		// Check if any enforcement action required for this policy
-		// TODO: Move this to within each enforcement action (when edit required set no_edit to false)
-		// if ((A === A_ctp_in) & (B === B_ctp_in)) begin
-		// 	policy_a_no_edit = 1;
-		// end else begin
-		// 	policy_a_no_edit = 0;
-		// end
-		
-		// Post input enforced 
+		//OUTPUT POLICY a END
 		
 		// Post output enforced 
-		A_ctp_out = A;
-		B_ctp_out = B;
+		// A_ctp_out = A;
+		// B_ctp_out = B;
 		
 	end
-	assign ab_policy_a_output_recovery_ref = recoveryRef;
+
+	assign ab_policy_a_output_recovery_ref = recoveryReference;
 
 endmodule
 
-module F_combinatorialVerilog_ab_policy_a_transition(
+module F_combinatorialVerilog_ab_policy_a_transition (
+	// Final inputs (plant to controller) 
+	// Final outputs (controller to plant) 
 	input wire A_ctp_final,
+
 	input wire B_ctp_final,
 
+
+	// State Output
 	output wire [1:0] ab_policy_a_state_out,
 
 	input wire clk
 	);
+
 	//For each policy, we need define types for the state machines
 	localparam
 		POLICY_STATE_ab_a_a0 = 0,
@@ -193,16 +208,18 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 		POLICY_STATE_ab_a_a2 = 3,
 		POLICY_STATE_ab_a_violation = 2;
 
-	reg A = 0; // Maybe remove these?
+	// Maybe remove these?
+	reg A = 0; 
+
 	reg B = 0;
+
+
 
 	//For each policy, we need a reg for the state machine
 	reg [1:0] ab_policy_a_c_state = POLICY_STATE_ab_a_a2;
 	reg [1:0] ab_policy_a_n_state = POLICY_STATE_ab_a_a2;
 
 	initial begin
-		// A = 0; Maybe needed?? If transition module outputs ctrl sigs
-		// B = 0;
 		ab_policy_a_c_state = POLICY_STATE_ab_a_a2;
 		ab_policy_a_n_state = POLICY_STATE_ab_a_a2;
 	end
@@ -217,8 +234,16 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 	end
 
 	always @* begin
+
+
 		A = A_ctp_final;
 		B = B_ctp_final;
+
+		// Default no location change
+		ab_policy_a_n_state = ab_policy_a_c_state;
+		
+		// Default no clock reset
+		
 
 		//transTaken_ab_policy_a = 0;
 		//select transition to advance state
@@ -245,7 +270,8 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 					//set expressions
 					
 					//transTaken_ab_policy_a = 1;
-				end  else begin
+				end  
+				else begin
 					//only possible in a violation
 					ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
 					//transTaken_ab_policy_a = 1;
@@ -273,7 +299,8 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 					//set expressions
 					
 					//transTaken_ab_policy_a = 1;
-				end  else begin
+				end
+				else begin
 					//only possible in a violation
 					ab_policy_a_n_state = POLICY_STATE_ab_a_violation;
 					//transTaken_ab_policy_a = 1;
@@ -297,11 +324,19 @@ module F_combinatorialVerilog_ab_policy_a_transition(
 
 endmodule
 
+
 module F_combinatorialVerilog_ab_policy_b_input (
+
 	//inputs (plant to controller)
 
+	//helpful internal variable outputs 
+	
+	//helpful state output input var,
 
 	input wire [1:0] ab_policy_b_state_in,
+
+	// Recovery Reference
+	output wire [2:0] ab_policy_b_input_recovery_ref,
 
 	input wire clk
 	);
@@ -313,26 +348,28 @@ module F_combinatorialVerilog_ab_policy_b_input (
 		POLICY_STATE_ab_b_b2 = 3,
 		POLICY_STATE_ab_b_violation = 2;
 
-	//reg recoveryRef = 0;
-	
+
+	// Recovery ref declare and init
+	reg [2:0] recoveryReference = 0;
 	//internal vars
 	
-	// initial begin
-	// 	policy_a_no_edit = 1;
-	// end
+
+	initial begin
+		recoveryReference = 0;
+	end
 
 	always @* begin
 		
 		// Default no change to inputs/outputs (transparency) 
 
-		// Do we need //recoveryRef default?
+		// Do we need //recoveryReference default?
 
 		// Default no clock reset
 		
 
 		//input policies
 		
-			//INPUT POLICY a BEGIN 
+			//INPUT POLICY b BEGIN 
 			case(ab_policy_b_state_in)
 				POLICY_STATE_ab_b_b0: begin
 					
@@ -346,8 +383,9 @@ module F_combinatorialVerilog_ab_policy_b_input (
 				
 			endcase
 		
-		//INPUT POLICY a END
+		//INPUT POLICY b END
 	end
+	assign ab_policy_b_input_recovery_ref = recoveryReference;
 
 endmodule
 
@@ -358,13 +396,18 @@ module F_combinatorialVerilog_ab_policy_b_output (
 	
 	input wire  B_ctp_in,
 	output reg  B_ctp_out,
+	
 
+	// State Input
 	input wire [1:0] ab_policy_b_state_in,
 
-	output reg [2:0] ab_policy_b_output_recovery_ref,
+	// Recovery Reference Output
+	output wire [2:0] ab_policy_b_output_recovery_ref,
 
 	input wire clk
+
 	);
+
 	//For each policy, we need define types for the state machines
 	localparam
 		POLICY_STATE_ab_b_b0 = 0,
@@ -372,26 +415,33 @@ module F_combinatorialVerilog_ab_policy_b_output (
 		POLICY_STATE_ab_b_b2 = 3,
 		POLICY_STATE_ab_b_violation = 2;
 
+
 	reg A = 0;
+
 	reg B = 0;
-	reg [2:0] recoveryRef = 0;
+
+	// Recovery ref declare and init
+	reg [2:0] recoveryReference = 0;
+
 
 	initial begin
-		recoveryRef = 0;
+		recoveryReference = 0;
 	end
 
-	always @(*) begin
+	always @* begin
 		// Default no change to inputs/outputs (transparency) 
 		A = A_ctp_in;
 		B = B_ctp_in;
-		recoveryRef	= 0;
+
+		recoveryReference = 0;
 
 		//output policies
 		//OUTPUT POLICY b BEGIN 
 		
 		case(ab_policy_b_state_in)
 			POLICY_STATE_ab_b_b0: begin
-				recoveryRef = 3;
+				// Default location recovery reference
+				recoveryReference = 3;
 
 				if (A && !(B)) begin
 					//transition b0 -> violation on (A and !B)
@@ -400,7 +450,8 @@ module F_combinatorialVerilog_ab_policy_b_output (
 					//Selected non-violation transition "b0 -> b1 on ( B )" and action is required
 					B = 1;
 
-					recoveryRef = 1;
+					// Set recovery reference
+					recoveryReference = 1;
 					
 				end 
 				if (!(A) && !(B)) begin
@@ -410,11 +461,14 @@ module F_combinatorialVerilog_ab_policy_b_output (
 					//Selected non-violation transition "b0 -> b1 on ( B )" and action is required
 					B = 1;
 					
-					recoveryRef = 2;
+					// Set recovery reference
+					recoveryReference = 2;
+
 				end 
 			end
 			POLICY_STATE_ab_b_b1: begin
-				recoveryRef = 6;
+				// Default location recovery reference
+				recoveryReference = 6;
 
 				if (A && B) begin
 					//transition b1 -> violation on (A and B)
@@ -422,8 +476,10 @@ module F_combinatorialVerilog_ab_policy_b_output (
 					
 					//Selected non-violation transition "b1 -> b0 on ( !B )" and action is required
 					B = 0;
-					
-					recoveryRef = 4;
+
+					// Set recovery reference
+					recoveryReference = 4;
+
 				end 
 				if (!(A) && B) begin
 					//transition b1 -> violation on (!A and B)
@@ -432,7 +488,9 @@ module F_combinatorialVerilog_ab_policy_b_output (
 					//Selected non-violation transition "b1 -> b0 on ( !B )" and action is required
 					B = 0;
 					
-					recoveryRef = 5;
+					// Set recovery reference
+					recoveryReference = 5;
+
 				end 
 			end
 			POLICY_STATE_ab_b_b2: begin
@@ -442,20 +500,13 @@ module F_combinatorialVerilog_ab_policy_b_output (
 		
 		//OUTPUT POLICY b END
 
-		// TODO: Move this to within each enforcement action (when edit required set no_edit to false)
-		// if ((A === A_ctp_in) & (B === B_ctp_in)) begin
-		// 	policy_b_no_edit = 1;
-		// end else begin
-		// 	policy_b_no_edit = 0;
-		// end
-		
 		// Post input enforced 
 		
 		// Post output enforced 
 		A_ctp_out = A;
 		B_ctp_out = B;
 	end
-	assign ab_policy_b_output_recovery_ref = recoveryRef;
+	assign ab_policy_b_output_recovery_ref = recoveryReference;
 	
 endmodule
 
@@ -475,7 +526,9 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 		POLICY_STATE_ab_b_b2 = 3,
 		POLICY_STATE_ab_b_violation = 2;
 
-	reg A = 0; // Maybe remove these?
+	// Maybe remove these?
+	reg A = 0; 
+
 	reg B = 0;
 
 	//For each policy, we need a reg for the state machine
@@ -498,7 +551,9 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 		
 	end
 
-	always @(*) begin
+	always @* begin
+
+
 		A = A_ctp_final;
 		B = B_ctp_final;
 
@@ -527,7 +582,8 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 					//set expressions
 					
 					//transTaken_ab_policy_b = 1;
-				end  else begin
+				end  
+				else begin
 					//only possible in a violation
 					ab_policy_b_n_state = POLICY_STATE_ab_b_violation;
 					//transTaken_ab_policy_b = 1;

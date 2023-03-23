@@ -66,6 +66,17 @@ func getVerilogWidthArrayForType(ctype string) string {
 func isDefault(str string) bool {
 	return str == "Default"
 }
+func getMaxRecoveryReference(policy rtedef.Policy) int {
+	var maxRecoveryRef uint = 0;
+	for _, transition := range policy.Transitions {
+		if transition.RecoveryReference > maxRecoveryRef {
+			maxRecoveryRef = transition.RecoveryReference
+		}
+	}
+	// fmt.Println(maxRecoveryRef)
+
+	return int(maxRecoveryRef)
+}
 
 func add1IfClock(ctype string) string {
 	if ctype == "dtimer_t" {

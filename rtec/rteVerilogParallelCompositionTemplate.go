@@ -29,23 +29,30 @@ const rteVerilogParallelCompositionTemplate = `
 		{{end}}
 		input wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state_in,
 		
+		// Recovery Reference
+		output wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref,
+
 		input wire clk
 		);
-
 
 		//For each policy, we need define types for the state machines
 		localparam
 			{{if len $pol.States}}{{range $index, $state := $pol.States}}` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_{{$state}} = {{$index}},
 			{{end}}{{else}}POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_unknown 0 {{end}}` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_violation = {{if len $pol.States}}{{len $pol.States}};{{else}}1;{{end}}
 
-		// initial begin{{range $index, $var := $block.InputVars}}
-		// 	{{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ptc_out = 0;
-		// 	{{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_dont_care = 0;
-		// {{end}}{{range $index, $var := $block.OutputVars}}
-		// 	{{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_out = 0;
-		// 	{{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_dont_care = 0;
-		// {{end}}
-		// end
+		{{range $index, $var := $block.InputVars}}
+		{{getVerilogType $var.Type}}{{$var.Name}} {{if $var.InitialValue}}/* = {{$var.InitialValue}}*/{{else}}= 0{{end}};
+		{{end}}
+		// Recovery ref declare and init
+		reg {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} recoveryReference = 0;
+		//internal vars
+		{{range $vari, $var := $pol.InternalVars}}{{if $var.Constant}}wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}} = {{$var.InitialValue}} {{else}}{{getVerilogType $var.Type}} {{$var.Name}} = 0{{if $var.InitialValue}}/* = {{$var.InitialValue}}*/{{end}}{{end}};
+		{{if not $var.Constant}}reg reset_{{$var.Name}};{{end}}
+		{{end}}
+
+		initial begin
+			recoveryReference = 0;
+		end
 
 		always @* begin
 			
@@ -80,6 +87,7 @@ const rteVerilogParallelCompositionTemplate = `
 			{{end}}
 			//INPUT POLICY {{$pol.Name}} END{{end}}
 		end
+		assign {{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref = recoveryReference;
 
 	endmodule
 
@@ -92,7 +100,8 @@ const rteVerilogParallelCompositionTemplate = `
 		// State Input
 		input wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state_in,
 
-		// TODO Recovery Reference Output
+		// Recovery Reference Output
+		output wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref,
 
 		input wire clk
 
@@ -108,9 +117,8 @@ const rteVerilogParallelCompositionTemplate = `
 		{{end}}{{range $index, $var := $block.OutputVars}}
 		{{getVerilogType $var.Type}}{{$var.Name}} {{if $var.InitialValue}}/* = {{$var.InitialValue}}*/{{else}}= 0{{end}};
 		{{end}}
-
-		// TODO: Recovery ref declare and init
-
+		// Recovery ref declare and init
+		reg {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} recoveryReference = 0;
 		//internal vars
 		{{range $vari, $var := $pol.InternalVars}}{{if $var.Constant}}wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}} = {{$var.InitialValue}} {{else}}{{getVerilogType $var.Type}} {{$var.Name}} = 0{{if $var.InitialValue}}/* = {{$var.InitialValue}}*/{{end}}{{end}};
 		{{if not $var.Constant}}reg reset_{{$var.Name}};{{end}}
@@ -153,6 +161,9 @@ const rteVerilogParallelCompositionTemplate = `
 				endcase
 			{{end}}
 			//OUTPUT POLICY {{$pol.Name}} END
+		end
+
+		assign {{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref = recoveryReference;
 
 	endmodule
 
@@ -161,7 +172,7 @@ const rteVerilogParallelCompositionTemplate = `
 		input wire {{$var.Name}}_ptc_final,
 		{{end}}
 		// Final outputs (controller to plant) {{range $index, $var := $block.OutputVars}}
-		intput wire {{$var.Name}}_ctp_final,
+		input wire {{$var.Name}}_ctp_final,
 		{{end}}
 
 		// State Output
@@ -225,14 +236,14 @@ const rteVerilogParallelCompositionTemplate = `
 				{{range $sti, $st := $pol.States}}` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_{{$st.Name}}: begin
 					{{range $tri, $tr := $pfbEnf.OutputPolicy.GetTransitionsForSource $st.Name}}{{/*
 					*/}}
-					{{if $tri}}else {{end}}if ({{$cond := getVerilogECCTransitionCondition $block (compileExpression $tr.STGuard)}}{{$cond.IfCond}}) begin
+					{{$cond := getVerilogECCTransitionCondition $block (compileExpression $tr.STGuard)}}{{if not (isDefault $cond.IfCond)}}{{if $tri}}else{{end}} if ({{$cond := getVerilogECCTransitionCondition $block (compileExpression $tr.STGuard)}}{{$cond.IfCond}}) begin
 						//transition {{$tr.Source}} -> {{$tr.Destination}} on {{$tr.Condition}}
 						{{$block.Name}}_policy_{{$pol.Name}}_n_state = ` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_{{$tr.Destination}};
 						//set expressions
 						{{range $exi, $ex := $tr.Expressions}}{{if not (equal_str ($ex.Value) "0")}}
 						{{$ex.VarName}} = {{$ex.Value}};{{else}}reset_{{$ex.VarName}} = 1;{{end}}{{end}}
 						//transTaken_{{$block.Name}}_policy_{{$pol.Name}} = 1;
-					end {{end}} else begin
+					end {{end}} {{end}} else begin
 						//only possible in a violation
 						{{$block.Name}}_policy_{{$pol.Name}}_n_state = ` + `POLICY_STATE_{{$block.Name}}_{{$pol.Name}}_violation;
 						//transTaken_{{$block.Name}}_policy_{{$pol.Name}} = 1;
@@ -258,90 +269,6 @@ const rteVerilogParallelCompositionTemplate = `
 	endmodule
 
 	{{end}}
-
-// Merge blocks for each input and output
-//merge inputs (plant to controller){{range $index, $var := $block.InputVars}}
-module merge_{{$var.Name}} (
-		input wire {{$var.Name}}_ptc_in, // original environment signal
-		input wire [{{(subtract (len $block.Policies) 1)}}:0] {{$var.Name}}_ptc_enf,
-		input wire [{{(subtract (len $block.Policies) 1)}}:0] {{$var.Name}}_dont_care_enf,
-		output reg {{$var.Name}}_enf_combined,
-		output reg {{$var.Name}}_none_care,
-		output reg {{$var.Name}}_ptc_out_final
-	);
-	initial begin
-		{{$var.Name}}_enf_combined = 0;
-		{{$var.Name}}_none_care = 0;
-		{{$var.Name}}_ptc_out_final = 0;
-	end
-
-	always@({{$var.Name}}_ptc_enf, {{$var.Name}}_dont_care_enf) begin
-		// OR all enforcer output
-		{{$var.Name}}_enf_combined <= |{{$var.Name}}_ptc_enf;
-		
-		// AND the don't cares (to figure out if none care)
-		{{$var.Name}}_none_care <= &{{$var.Name}}_dont_care_enf;
-
-	end
-
-	reg {{$var.Name}}_env_delay;
-	reg {{$var.Name}}_env_delay_2;
-	always @({{$var.Name}}_ptc_in) begin
-		{{$var.Name}}_env_delay <= {{$var.Name}}_ptc_in;
-	end
-	always @({{$var.Name}}_env_delay) begin
-		{{$var.Name}}_env_delay_2 <= {{$var.Name}}_env_delay;
-	end
-
-	// Mux to select original if none care
-	always @({{$var.Name}}_enf_combined, {{$var.Name}}_none_care, {{$var.Name}}_env_delay_2) begin
-		{{$var.Name}}_ptc_out_final <= ({{$var.Name}}_none_care)? {{$var.Name}}_env_delay_2: {{$var.Name}}_enf_combined;
-	end
-
-endmodule
-{{end}}
-
-//merge outputs (controller to plant){{range $index, $var := $block.OutputVars}}
-module merge_{{$var.Name}} (
-		input wire {{$var.Name}}_ctp_in, // original environment signal
-		input wire [{{(subtract (len $block.Policies) 1)}}:0] {{$var.Name}}_ctp_enf,
-		input wire [{{(subtract (len $block.Policies) 1)}}:0] {{$var.Name}}_dont_care_enf,
-		output reg {{$var.Name}}_enf_combined,
-		output reg {{$var.Name}}_none_care,
-		output reg {{$var.Name}}_ctp_out_final
-	);
-
-	initial begin
-		{{$var.Name}}_enf_combined = 0;
-		{{$var.Name}}_none_care = 0;
-		{{$var.Name}}_ctp_out_final = 0;
-	end
-
-	always@({{$var.Name}}_ctp_enf, {{$var.Name}}_dont_care_enf)	begin
-		// OR all enforcer output
-		{{$var.Name}}_enf_combined <= |{{$var.Name}}_ctp_enf;
-		
-		// AND the don't cares (to figure out if none care)
-		{{$var.Name}}_none_care <= &{{$var.Name}}_dont_care_enf;
-
-	end
-
-	reg {{$var.Name}}_env_delay;
-	reg {{$var.Name}}_env_delay_2;
-	always @({{$var.Name}}_ctp_in) begin
-		{{$var.Name}}_env_delay <= {{$var.Name}}_ctp_in;
-	end
-	always @({{$var.Name}}_env_delay) begin
-		{{$var.Name}}_env_delay_2 <= {{$var.Name}}_env_delay;
-	end
-
-	// Mux to select original if none care
-	always @({{$var.Name}}_enf_combined, {{$var.Name}}_none_care, {{$var.Name}}_env_delay_2) begin
-		{{$var.Name}}_ctp_out_final <= ({{$var.Name}}_none_care)? {{$var.Name}}_env_delay_2: {{$var.Name}}_enf_combined;
-	end
-
-endmodule
-{{end}}
 
 module parallel_F_{{$block.Name}}(
 
@@ -378,29 +305,6 @@ module parallel_F_{{$block.Name}}(
 	output wire OUTPUT_{{$var.Name}}_ctp_enf_final;
 	{{end}}
 
-	//helper outputs{{range $polI, $pol := $block.Policies}}{{range $vari, $var := $pol.InternalVars}}{{if not $var.Constant}}
-	//output wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_out;
-	{{end}}{{end}}{{if $polI}}{{end}}//output wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state_out;{{end}}
-	
-	{{range $index, $var := $block.InputVars}}merge_{{$var.Name}} instance_merge_{{$var.Name}}(
-		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc),
-		.{{$var.Name}}_ptc_enf({{$var.Name}}_ptc_enf),
-		.{{$var.Name}}_dont_care_enf({{$var.Name}}_dont_care_enf),
-		.{{$var.Name}}_enf_combined(OUTPUT_{{$var.Name}}_enf_combined),
-		.{{$var.Name}}_none_care(OUTPUT_{{$var.Name}}_none_care),
-		.{{$var.Name}}_ptc_out_final(OUTPUT_{{$var.Name}}_ptc_enf_final)
-	);
-	{{end}}
-	{{range $index, $var := $block.OutputVars}}merge_{{$var.Name}} instance_merge_{{$var.Name}}(
-		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
-		.{{$var.Name}}_ctp_enf({{$var.Name}}_ctp_enf),
-		.{{$var.Name}}_dont_care_enf({{$var.Name}}_dont_care_enf),
-		.{{$var.Name}}_enf_combined(OUTPUT_{{$var.Name}}_enf_combined),
-		.{{$var.Name}}_none_care(OUTPUT_{{$var.Name}}_none_care),
-		.{{$var.Name}}_ctp_out_final(OUTPUT_{{$var.Name}}_ctp_enf_final)
-	);
-	{{end}}
-
 	{{range $polI, $pol := $block.Policies}}
 	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}} instance_policy_{{$pol.Name}}(
 		{{range $index, $var := $block.InputVars}}
@@ -434,7 +338,8 @@ var verilogParallelCompositionTemplateFuncMap = template.FuncMap{
 	"getVerilogWidthArray":             getVerilogWidthArray,
 	"getVerilogWidthArrayForType":      getVerilogWidthArrayForType,
 	"add1IfClock":                      add1IfClock,
-	"isDefault":                      	isDefault,
+	"isDefault":                        isDefault,
+	"getMaxRecoveryReference":          getMaxRecoveryReference,
 
 	"compileExpression": stconverter.VerilogCompileExpression,
 
