@@ -2,7 +2,7 @@ package rteparser
 
 import (
 	"strings"
-
+	
 	"github.com/PRETgroup/easy-rte/rtedef"
 )
 
@@ -188,6 +188,7 @@ func (t *pParse) parsePState(fbIndex int) *ParseError {
 		var recoveries []rtedef.PExpression
 		var expressionComponents []string
 		var expressionVar string
+		var recoveryReference uint
 		s := t.pop()
 
 		if s == "" {
@@ -276,7 +277,7 @@ func (t *pParse) parsePState(fbIndex int) *ParseError {
 			}
 
 			//add a transition to the violation state
-			fb.Policies[len(fb.Policies)-1].AddTransition(name, "violation", strings.Join(condComponents, " "), expressions, recoveries)
+			fb.Policies[len(fb.Policies)-1].AddTransition(name, "violation", strings.Join(condComponents, " "), expressions, recoveries, recoveryReference)
 		}
 
 		if s == pTrans {
@@ -382,7 +383,7 @@ func (t *pParse) parsePState(fbIndex int) *ParseError {
 			}
 			t.pop() //pop the pSemicolon
 			//save the transition
-			fb.Policies[len(fb.Policies)-1].AddTransition(name, destState, strings.Join(condComponents, " "), expressions, recoveries)
+			fb.Policies[len(fb.Policies)-1].AddTransition(name, destState, strings.Join(condComponents, " "), expressions, recoveries, recoveryReference)
 		}
 	}
 

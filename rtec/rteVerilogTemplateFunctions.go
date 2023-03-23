@@ -13,8 +13,10 @@ type VerilogECCTransition CECCTransition
 //getVerilogECCTransitionCondition returns the C "if" condition to use in state machine next state logic and associated events
 // returns "full condition", "associated events"
 func getVerilogECCTransitionCondition(function rtedef.EnforcedFunction, trans string) VerilogECCTransition {
-
-	return VerilogECCTransition{IfCond: trans, AssEvents: nil}
+	if (trans != "Default") {
+		return VerilogECCTransition{IfCond: trans, AssEvents: nil}
+	}
+	return VerilogECCTransition{"Default", nil} // Could do something here to make clearer default and handle in template?
 }
 
 //getVerilogType returns the VHDL type to use with respect to an IEC61499 type
@@ -59,6 +61,10 @@ func getVerilogWidthArrayForType(ctype string) string {
 	}
 
 	return verilogType
+}
+
+func isDefault(str string) bool {
+	return str == "Default"
 }
 
 func add1IfClock(ctype string) string {

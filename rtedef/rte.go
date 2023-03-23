@@ -106,11 +106,12 @@ func (p PState) Name() string {
 
 //PTransition is a transition between PState in a Policy (mealy machine transitions)
 type PTransition struct {
-	Source      PState
-	Destination PState
-	Condition   string
-	Expressions []PExpression //output expressions associated with this transition
-	Recover     []PExpression
+	Source            PState
+	Destination       PState
+	Condition         string
+	Expressions       []PExpression //output expressions associated with this transition
+	Recover           []PExpression
+	RecoveryReference uint
 }
 
 //PExpression is used to assign a var a value based on a PTransitions
@@ -175,13 +176,14 @@ func (efb *Policy) AddState(name string) error {
 }
 
 //AddTransition adds a state transition to a bfb
-func (efb *Policy) AddTransition(source string, dest string, cond string, expressions []PExpression, recoveries []PExpression) error {
+func (efb *Policy) AddTransition(source string, dest string, cond string, expressions []PExpression, recoveries []PExpression, recoveryReference uint) error {
 	efb.Transitions = append(efb.Transitions, PTransition{
-		Source:      PState(source),
-		Destination: PState(dest),
-		Condition:   cond,
-		Expressions: expressions,
-		Recover:     recoveries,
+		Source:            PState(source),
+		Destination:       PState(dest),
+		Condition:         cond,
+		Expressions:       expressions,
+		Recover:           recoveries,
+		RecoveryReference: recoveryReference,
 	})
 	return nil //TODO: make sure [source] and [dest] can be found, make sure [cond] is valid, make sure [expressions] is valid
 }
