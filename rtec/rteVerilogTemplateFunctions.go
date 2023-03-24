@@ -131,12 +131,15 @@ func getLUT(blockName string) string {
 		// TODO: For each row
 		// Add to case statement!
 		var caseStatement string = ""
-		for _, row := range q.LUT.Rows {
-			caseStatement += "\t" + fmt.Sprint(len(row.RecoveryKey)) + "'b" + row.RecoveryKey + ": begin\n"
-			for _, signal := range row.Recovers {
-				caseStatement += "\t\t" + signal.Signal + " = " + boolStrToIntStr(signal.Value) + ";\n"
+		for i, row := range q.LUT.Rows {
+			if i != 0 {
+				caseStatement += "\t\t\t"
 			}
-			caseStatement += "\t\tend\n"
+			caseStatement += fmt.Sprint(len(row.RecoveryKey)) + "'b" + row.RecoveryKey + ": begin\n"
+			for _, signal := range row.Recovers {
+				caseStatement += "\t\t\t\t" + signal.Signal + " = " + boolStrToIntStr(signal.Value) + ";\n"
+			}
+			caseStatement += "\t\t\t\tend\n"
 		}
 		fmt.Println(caseStatement)
 

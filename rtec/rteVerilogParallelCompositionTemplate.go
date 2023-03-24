@@ -300,8 +300,24 @@ module F_LUT_Output_Edit (
 		input wire clk
 	);
 
+	{{range $index, $var := $block.OutputVars}}reg {{$var.Name}} = 0;
+	{{end}}
+	initial begin{{range $index, $var := $block.OutputVars}}
+		{{$var.Name}}_ctp_out = 0;{{end}}
+	end
+
 	// TODO: LUT
-	{{getLUT $block.Name}}
+	always @(*) begin
+		case({ {{range $polI, $pol := $block.Policies}}{{if not (equal $polI 0)}}, {{end}}{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref{{end}} }) 
+			{{getLUT $block.Name}}
+			default: begin {{range $index, $var := $block.OutputVars}}
+					{{$var.Name}} = {{$var.Name}}_ctp_in;{{end}}
+				end
+		endcase
+		{{range $index, $var := $block.OutputVars}}
+		{{$var.Name}}_ctp_out = {{$var.Name}};{{end}}
+	end
+
 
 endmodule
 
