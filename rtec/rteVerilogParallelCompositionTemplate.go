@@ -94,7 +94,7 @@ const rteVerilogParallelCompositionTemplate = `
 	module F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_output (
 		//outputs (controller to plant){{range $index, $var := $block.OutputVars}}
 		input wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_in,
-		output reg {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_out,
+		//output reg {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_out,
 		{{end}}
 
 		// State Input
@@ -326,54 +326,82 @@ module parallel_F_{{$block.Name}}(
 
 		//inputs (plant to controller){{range $index, $var := $block.InputVars}}
 		{{$var.Name}}_ptc,
-		OUTPUT_{{$var.Name}}_ptc_enf_final,{{end}}
+		{{$var.Name}}_ptc_out,
+		//OUTPUT_{{$var.Name}}_ptc_enf_final,{{end}}
 		
 		//outputs (controller to plant){{range $index, $var := $block.OutputVars}}
 		{{$var.Name}}_ctp,
-		OUTPUT_{{$var.Name}}_ctp_enf_final,{{end}}
+		{{$var.Name}}_ctp_out,
+		//OUTPUT_{{$var.Name}}_ctp_enf_final,{{end}}
 		
 		//helper outputs{{range $polI, $pol := $block.Policies}}{{range $vari, $var := $pol.InternalVars}}{{if not $var.Constant}}
 		//{{$var.Name}}_out,
-		{{end}}{{end}}{{if $polI}}{{end}}//{{$block.Name}}_policy_{{$pol.Name}}_state_out,{{end}}
+		{{end}}{{end}}{{if $polI}}{{end}}//{{$block.Name}}_policy_{{$pol.Name}}_state_out,
+		
+		{{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref,
+		{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref,
+		{{end}}
 
 		clk
 	);
 
 	input wire clk;
+
 	{{range $index, $var := $block.InputVars}}
 	input wire {{$var.Name}}_ptc;
-	wire [{{(subtract (len $block.Policies) 1)}}:0] {{$var.Name}}_ptc_enf;
-	wire [{{(subtract (len $block.Policies) 1)}}:0] {{$var.Name}}_dont_care_enf;
-	wire OUTPUT_{{$var.Name}}_enf_combined;
-	wire OUTPUT_{{$var.Name}}_none_care;
-	output wire OUTPUT_{{$var.Name}}_ptc_enf_final;{{end}}
-
+	output wire {{$var.Name}}_ptc_out;{{end}}
+	
 	{{range $index, $var := $block.OutputVars}}
 	input wire {{$var.Name}}_ctp;
-	wire [{{(subtract (len $block.Policies) 1)}}:0] {{$var.Name}}_ctp_enf;
-	wire [{{(subtract (len $block.Policies) 1)}}:0] {{$var.Name}}_dont_care_enf;
-	wire OUTPUT_{{$var.Name}}_enf_combined;
-	wire OUTPUT_{{$var.Name}}_none_care;
-	output wire OUTPUT_{{$var.Name}}_ctp_enf_final;
+	output wire {{$var.Name}}_ctp_out;
+	{{end}}
+	
+	{{range $polI, $pol := $block.Policies}}
+	wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state;
+	output wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref;
+	output wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref;
 	{{end}}
 
 	{{range $polI, $pol := $block.Policies}}
-	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}} instance_policy_{{$pol.Name}}(
+	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_input instance_policy_{{$pol.Name}}_input(
+		.{{$block.Name}}_policy_{{$pol.Name}}_state_in({{$block.Name}}_policy_{{$pol.Name}}_state),
+		.{{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref),
 		{{range $index, $var := $block.InputVars}}
 		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc),
-		.{{$var.Name}}_ptc_out({{$var.Name}}_ptc_enf[{{$polI}}]),
-		.{{$var.Name}}_dont_care({{$var.Name}}_dont_care_enf[{{$polI}}]),
-		{{end}}{{range $index, $var := $block.OutputVars}}
-		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
-		.{{$var.Name}}_ctp_out({{$var.Name}}_ctp_enf[{{$polI}}]),
-		.{{$var.Name}}_dont_care({{$var.Name}}_dont_care_enf[{{$polI}}]),
-		{{end}}{{range $vari, $var := $pol.InternalVars}}{{if not $var.Constant}}
-		//.{{$var.Name}}_out({{$var.Name}}_out),
-		{{end}}{{end}}
-		{{if $polI}}{{end}}//.{{$block.Name}}_policy_{{$pol.Name}}_state_out({{$block.Name}}_policy_{{$pol.Name}}_state_out),
+		{{end}}
 		.clk(clk)
-		);
+	);
+	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_output instance_policy_{{$pol.Name}}_output(
+		{{range $index, $var := $block.OutputVars}}
+		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
+		{{end}}
+		.{{$block.Name}}_policy_{{$pol.Name}}_state_in({{$block.Name}}_policy_{{$pol.Name}}_state),
+		.{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref),
+		.clk(clk)
+	);
+	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_transition instance_policy_{{$pol.Name}}_transition(
+		{{range $index, $var := $block.InputVars}}
+		.{{$var.Name}}_ptc_final({{$var.Name}}_ptc_out),
+		{{end}}
+		{{range $index, $var := $block.OutputVars}}
+		.{{$var.Name}}_ctp_final({{$var.Name}}_ctp_out),
+		{{end}}
+		.{{$block.Name}}_policy_{{$pol.Name}}_state_out({{$block.Name}}_policy_{{$pol.Name}}_state),
+		.clk(clk)
+	);
+	
 	{{end}}
+		
+	F_LUT_Output_Edit instance_LUT_Output_Edit(
+		{{range $index, $var := $block.OutputVars}}
+		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
+		.{{$var.Name}}_ctp_out({{$var.Name}}_ctp_out),
+		{{end}}
+		{{range $polI, $pol := $block.Policies}}
+		.{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref),
+		{{end}}
+		.clk(clk)
+	);
 	
 endmodule
 
@@ -392,7 +420,7 @@ var verilogParallelCompositionTemplateFuncMap = template.FuncMap{
 	"add1IfClock":                      add1IfClock,
 	"isDefault":                        isDefault,
 	"getMaxRecoveryReference":          getMaxRecoveryReference,
-	"getLUT":         					getLUT,
+	"getLUT":                           getLUT,
 
 	"compileExpression": stconverter.VerilogCompileExpression,
 

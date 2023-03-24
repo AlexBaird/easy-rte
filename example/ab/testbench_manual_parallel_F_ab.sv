@@ -13,15 +13,17 @@ module testbench_manual_parallel_F_ab (
     );
     
 	input wire clk;
+    
 	input wire A_ctp;
-	input wire B_ctp;
 	output wire OUTPUT_A_ctp_enf_final_policy_a;
-	output wire OUTPUT_B_ctp_enf_final_policy_a;
 	output wire OUTPUT_A_ctp_enf_final_policy_b;
-	output wire OUTPUT_B_ctp_enf_final_policy_b;
 	output wire [2:0] ab_policy_a_output_recovery_ref;
-	output wire [2:0] ab_policy_b_output_recovery_ref;
 	output wire A_ctp_out;
+
+	input wire B_ctp;
+	output wire OUTPUT_B_ctp_enf_final_policy_a;
+	output wire OUTPUT_B_ctp_enf_final_policy_b;
+	output wire [2:0] ab_policy_b_output_recovery_ref;
 	output wire B_ctp_out;
 
     wire [1:0] state;

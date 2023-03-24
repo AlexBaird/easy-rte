@@ -6,7 +6,7 @@ python rtecomp/main.py // Check the file is selected in the script (TODO: input 
 ## EasyRTE XML to Verilog
  make verilog_enf PROJECT=ab FILE=ab_modified COMPILEARGS=-synthesis
 
-# ModelSim Compile AB Example
+# ModelSim Manual AB Example
 ## Manual Parallel
 vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition/example/ab/manual_parallel_F_ab.sv
 
@@ -61,3 +61,26 @@ run 1ns
 # Easy RTE Verilog Parallel Composition Template
 ## Build EasyRTE Local and then Compile AB Example using modified
 make local && make verilog_enf PROJECT=ab FILE=ab_modified COMPILEARGS=-parallelComposition
+
+# ModelSim Compiled AB Example
+## Compiled Parallel
+vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition/example/ab/parallel_F_ab.sv
+
+## Some Simulation Things
+vsim work.parallel_F_ab
+
+add wave -position end  sim:/parallel_F_ab/A_ctp
+add wave -position end  sim:/parallel_F_ab/A_ctp_out
+add wave -position end  sim:/parallel_F_ab/ab_policy_a_input_recovery_ref
+add wave -position end  sim:/parallel_F_ab/ab_policy_a_output_recovery_ref
+add wave -position end  sim:/parallel_F_ab/ab_policy_a_state
+add wave -position end  sim:/parallel_F_ab/ab_policy_b_input_recovery_ref
+add wave -position end  sim:/parallel_F_ab/ab_policy_b_output_recovery_ref
+add wave -position end  sim:/parallel_F_ab/ab_policy_b_state
+add wave -position end  sim:/parallel_F_ab/B_ctp
+add wave -position end  sim:/parallel_F_ab/B_ctp_out
+add wave -position end  sim:/parallel_F_ab/clk
+
+force -freeze sim:/parallel_F_ab/clk 1 0, 0 {50 ps} -r 100
+force -freeze sim:/parallel_F_ab/B_ctp 0 0
+force -freeze sim:/parallel_F_ab/A_ctp 0 0

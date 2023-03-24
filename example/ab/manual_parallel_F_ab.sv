@@ -629,6 +629,7 @@ module F_combinatorialVerilog_ab_policy_b_transition (
 				//transTaken_ab_policy_b = 1;
 			end
 		endcase
+		
 	end
 
 	assign ab_policy_b_state_out =  ab_policy_b_c_state;
@@ -639,17 +640,21 @@ endmodule
 // Inputs: recovery references from each policy
 // Outputs: final signals for outputs (in this example A and B)
 module F_LUT_Output_Edit (
+		// Outputs (controller to plant) 
 		input wire A_ctp_in,
+		output reg A_ctp_out, // final
+
 		input wire B_ctp_in,
-		input reg [2:0] policy_a_recovery_ref,
-		input reg [2:0] policy_b_recovery_ref,
-		output reg A_ctp_out,
-		output reg B_ctp_out,
+		output reg B_ctp_out, // final
+
+		input reg [2:0] ab_policy_a_output_recovery_ref,
+		input reg [2:0] ab_policy_b_output_recovery_ref,
+
 		input wire clk
 	);
 
 	// wire [5:0] recovery_key = 0;
-	// assign recovery_key = {policy_a_recovery_ref, policy_b_recovery_ref};
+	// assign recovery_key = {ab_policy_a_output_recovery_ref, ab_policy_b_output_recovery_ref};
 
 	reg A = 0;
 	reg B = 0;
@@ -660,7 +665,7 @@ module F_LUT_Output_Edit (
 	end
 
 	always @(*) begin
-		case({policy_a_recovery_ref, policy_b_recovery_ref})
+		case({ ab_policy_a_output_recovery_ref, ab_policy_b_output_recovery_ref })
 			6'b001001: begin
 				A = 1;
 				B = 1;
@@ -677,10 +682,6 @@ module F_LUT_Output_Edit (
 				A = 0;
 				B = 1;
 				end
-			6'b001010: begin
-				A = 1;
-				B = 1;
-				end
 			6'b101001: begin
 				A = 0;
 				B = 1;
@@ -689,11 +690,23 @@ module F_LUT_Output_Edit (
 				A = 0;
 				B = 1;
 				end
+			6'b001010: begin
+				A = 1;
+				B = 1;
+				end
 			6'b001011: begin
 				A = 1;
 				B = 0;
 				end
 			6'b001100: begin
+				A = 1;
+				B = 0;
+				end
+			6'b001101: begin
+				A = 1;
+				B = 0;
+				end
+			6'b001110: begin
 				A = 1;
 				B = 0;
 				end
@@ -709,11 +722,11 @@ module F_LUT_Output_Edit (
 				A = 1;
 				B = 0;
 				end
-			6'b001101: begin
+			6'b010101: begin
 				A = 1;
 				B = 0;
 				end
-			6'b010101: begin
+			6'b010110: begin
 				A = 1;
 				B = 0;
 				end
@@ -721,17 +734,13 @@ module F_LUT_Output_Edit (
 				A = 0;
 				B = 1;
 				end
-			6'b010110: begin
-				A = 1;
-				B = 0;
-				end
-			6'b001110: begin
-				A = 1;
-				B = 0;
-				end
 			6'b011011: begin
 				A = 1;
 				B = 1;
+				end
+			6'b011100: begin
+				A = 0;
+				B = 0;
 				end
 			6'b011101: begin
 				A = 1;
@@ -739,10 +748,6 @@ module F_LUT_Output_Edit (
 				end
 			6'b011110: begin
 				A = 1;
-				B = 0;
-				end
-			6'b011100: begin
-				A = 0;
 				B = 0;
 				end
 			6'b100010: begin
@@ -805,8 +810,8 @@ module F_LUT_Output_Edit (
 				A = 0;
 				B = 0;
 				end
-			default:
-				begin
+
+			default: begin
 					A = A_ctp_in;
 					B = B_ctp_in;
 				end
@@ -817,5 +822,4 @@ module F_LUT_Output_Edit (
 	end
 
 endmodule
-
 
