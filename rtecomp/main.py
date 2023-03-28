@@ -1,23 +1,8 @@
 
 from parse import * # pip install parse
 import pprint
-# from bs4 import BeautifulSoup
- 
-# # Reading the data inside the xml
-# # file to a variable under the name
-# # data
-# with open('example/abc5/abc5.xml', 'r') as f:
-#     data = f.read()
- 
-# # Passing the stored data inside
-# # the beautifulsoup parser, storing
-# # the returned object
-# Bs_data = BeautifulSoup(data, "xml")
- 
-# # Finding all instances of tag
-# # `unique`
-# b_unique = Bs_data.find_all('Recover')
- 
+import xml.etree.ElementTree as ET
+import sys
 
 ###########################################################################
 # Helper Functions
@@ -269,7 +254,7 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
     # Count number of brackets
     left = a.count("(")
     right = a.count(")")
-    assert(left == right, "Brackets must be matching")
+    assert(left == right)
 
     # If even count of brackets, there is a missing set of brackets on outer most (true always?)
     if (left % 2 == 0):
@@ -507,184 +492,195 @@ def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplat
         
 ###########################################################################
 
-import xml.etree.ElementTree as ET
+def main(dir, file):
+    print("======================================")
+    print(" READING & PARSING EXISTING XML FILE")
+    print("======================================")
 
-print("======================================")
-print(" READING & PARSING EXISTING XML FILE")
-print("======================================")
-
-# Passing the path of the
-# xml document to enable the
-# parsing process
-projectName = "ab"
-input_filename = "example/"+projectName+"/"+projectName+".xml"
-output_filename = "example/"+projectName+"/"+projectName+"_modified.xml"
-# tree = ET.parse('example/abc5/abc5.xml')
-tree = ET.parse(input_filename)
- 
-# getting the parent tag of
-# the xml document
-originalXMLRoot = tree.getroot()
- 
-# printing the root (parent) tag
-# of the xml document, along with
-# its memory location
-print("Enforced Function: ", originalXMLRoot.attrib.get("Name"))
-
-alphabetTemplate, alphabetKeyLength = convertInterfaceToBoolDict(originalXMLRoot)
-
-# root.tag
-# root.attrib
-# for child in root:
-#     print(child.tag, child.attrib)
-#     for childchild in child:
-#         print("\t", childchild.tag, childchild.attrib)
-
-print("==========================================")
-print(" COLLECTING ALL VIOLATING TRANSITIONS")
-print("==========================================")
-
-# Find each policies violating transitions
-policies = {}
-for policy in originalXMLRoot.iter("Policy"):
-    allViolationTransitions = []
-    policyViolationCount = 0
-    locations = []
-    for transition in policy.iter('PTransition'):
-        for child in transition.iter('Recover'):
-            print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
-            violationConditions, _ = convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
-            print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
-            print("Violation Conditions: ", violationConditions)
-            acceptable = getAcceptableTransitions(violationConditions, alphabetTemplate)
-            location = transition.find("Source").text
-
-            for violatingCondition in violationConditions:
-                # Put each violating signal set into table, [policy, reference, location, A, B, C, acceptable resolutions] 
-                policyViolationCount += 1 # TODO: Review renaming this, not always a violating trans
-                allViolationTransitions.append({
-                    "policy":policy.attrib.get("Name"),
-                    "violationRef":policyViolationCount,
-                    "location":location,
-                    "violatingConditionString":transition.find("Condition").text,
-                    "violatingCondition":stripClockConditionsFromKey(violatingCondition, alphabetKeyLength),
-                    "acceptableConditions":acceptable
-                })
-
-            if location not in locations:
-                locations.append(location)
-                policyViolationCount += 1 # TODO: Review renaming this
-                allViolationTransitions.append({
-                    "policy":policy.attrib.get("Name"),
-                    "violationRef":policyViolationCount,
-                    "location":location,
-                    "violatingConditionString":"NONE",
-                    "violatingCondition":"NONE",
-                    "acceptableConditions":acceptable
-                })
-
-    policies[policy.attrib.get("Name")] = allViolationTransitions
-
-# Add non-violation for each location in each policy 
-# (because there is still some set of acceptable I/O for each policy+location, 
-# and we need to capture this to ensure edit action doesnt inadvertantly violate)
-def getUniqueLocations(policy):
-    locations = []
-    for violation in policy:
-        if violation["location"] not in locations:
-            locations.append(violation["location"])
-    return locations
-
-def addRecovery(recoveries, transitionInfo, recovery):
-    recoveries[transitionInfo["policy"]+"-"+transitionInfo["location"]+"-"+transitionInfo["violatingCondition"]] = {
-        "policy":transitionInfo["policy"],
-        "location":transitionInfo["location"],
-        "violationRef":transitionInfo["violationRef"],
-        "violatingConditionString":transitionInfo["violatingConditionString"],
-        "violatingCondition":transitionInfo["violatingCondition"],
-        "recovery":recovery
-    }
-    return
-
-print("==========================================")
-print(" CREATING VIOLATION REF TABLE")
-print("==========================================")
-
-def getNumberLocations(policy):
-    return len(getUniqueLocations(policy))
-
-# Create template to be used as rows (each policy should have a column, which will hold the violation reference)
-rowTemplate = {}
-for policy in policies:
-    rowTemplate[policy] = 1 
-
-numberRowsExpected = 1
-recoveryKeyLength = {}
-for policy in policies:
-    # numberLocations = getNumberLocations(policies[policy])
-    numberRowsExpected = numberRowsExpected * (len(policies[policy])) 
-    recoveryKeyLength[policy] = len('{0:b}'.format(len(policies[policy])))
-
-rowsExample = []
-rowsExample.append(rowTemplate)
-for policy in policies:
-    rowCount = len(rowsExample)
-    for i in range(rowCount):
-        for violation in policies[policy]:
-            if violation["violationRef"] > 1: # Added check here to remove don't cares
-                row = rowsExample[i].copy()
-                row[policy] = violation["violationRef"]
-                rowsExample.append(row)
-
-assert(len(rowsExample) == numberRowsExpected)
-
-# List of dictionaries with each policy and violation refs
-import pprint
-# pprint.pprint(rowsExample)
-
-print("=============================================")
-print(" PRE-CRUNCHING EDITS FOR VIOLATION REF COMBO")
-print("=============================================")
-
-# Now iterate through this list, pulling each set of acceptable from policies object
-for row in rowsExample:
-    print(row)
-    acceptableSets = []
-    for policy in row:
-        if row[policy] == 0:
-            print("Dont Care - Add things that dont violate the policy.. in this location..?")
-        else:
-            print("Add", policy, row[policy]-1)#, policies[policy][row[policy]-1]["acceptableConditions"])
-            acceptableSets.append(policies[policy][row[policy]-1]["acceptableConditions"])
-
-    # Do an intersection
-    intersection = acceptableSets[0]
-    for i in range(1, len(acceptableSets)):
-        intersection = getIntersection(intersection, acceptableSets[i])
-
-    print("Intersection:", end=" ")
-    pprint.pprint(intersection)
+    # Passing the path of the
+    # xml document to enable the
+    # parsing process
+    input_filename = "example/"+dir+"/"+file+".xml"
+    output_filename = "example/"+dir+"/"+file+"_modified.xml"
+    # tree = ET.parse('example/abc5/abc5.xml')
+    tree = ET.parse(input_filename)
     
-    # NOTE: This will fail when intersection is empty set! 
-    assert(len(intersection) > 0)
-    # We are expecting this to occur for some examples, just need to handle it gracefully.
-    # In some cases this assert will fail when the designer has created unenforceable policies
-    # In other cases, the policies will never emit the two violationRef signals at the same time, thus this row/edit/enforcement action doesnt need to exist
-   
-    # TODO: Then do a minEdit
-    selectedRecovery = intersection[list(intersection.keys())[0]] 
+    # getting the parent tag of
+    # the xml document
+    originalXMLRoot = tree.getroot()
+    
+    # printing the root (parent) tag
+    # of the xml document, along with
+    # its memory location
+    print("Enforced Function: ", originalXMLRoot.attrib.get("Name"))
 
-    # Get binary recoveryKeys
-    recoveryKey = ""
-    for policy in row:
-        b = '{0:b}'.format(row[policy])
-        # Pad with 0s as required to meet length
-        toPad = recoveryKeyLength[policy] - len(b)
-        b = "0" * toPad + b
-        recoveryKey += b
-    row["recoveryKey"] = recoveryKey 
+    alphabetTemplate, alphabetKeyLength = convertInterfaceToBoolDict(originalXMLRoot)
 
-    row["recovery"] = list(intersection.keys())[0]
-    row["recoveryValue"] = intersection[list(intersection.keys())[0]]
+    # root.tag
+    # root.attrib
+    # for child in root:
+    #     print(child.tag, child.attrib)
+    #     for childchild in child:
+    #         print("\t", childchild.tag, childchild.attrib)
 
-writeNewXML(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate, rowsExample)
+    print("==========================================")
+    print(" COLLECTING ALL VIOLATING TRANSITIONS")
+    print("==========================================")
+
+    # Find each policies violating transitions
+    policies = {}
+    for policy in originalXMLRoot.iter("Policy"):
+        allViolationTransitions = []
+        policyViolationCount = 0
+        locations = []
+        for transition in policy.iter('PTransition'):
+            for child in transition.iter('Recover'):
+                print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
+                violationConditions, _ = convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
+                print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
+                print("Violation Conditions: ", violationConditions)
+                acceptable = getAcceptableTransitions(violationConditions, alphabetTemplate)
+                location = transition.find("Source").text
+
+                for violatingCondition in violationConditions:
+                    # Put each violating signal set into table, [policy, reference, location, A, B, C, acceptable resolutions] 
+                    policyViolationCount += 1 # TODO: Review renaming this, not always a violating trans
+                    allViolationTransitions.append({
+                        "policy":policy.attrib.get("Name"),
+                        "violationRef":policyViolationCount,
+                        "location":location,
+                        "violatingConditionString":transition.find("Condition").text,
+                        "violatingCondition":stripClockConditionsFromKey(violatingCondition, alphabetKeyLength),
+                        "acceptableConditions":acceptable
+                    })
+
+                if location not in locations:
+                    locations.append(location)
+                    policyViolationCount += 1 # TODO: Review renaming this
+                    allViolationTransitions.append({
+                        "policy":policy.attrib.get("Name"),
+                        "violationRef":policyViolationCount,
+                        "location":location,
+                        "violatingConditionString":"NONE",
+                        "violatingCondition":"NONE",
+                        "acceptableConditions":acceptable
+                    })
+
+        policies[policy.attrib.get("Name")] = allViolationTransitions
+
+    # Add non-violation for each location in each policy 
+    # (because there is still some set of acceptable I/O for each policy+location, 
+    # and we need to capture this to ensure edit action doesnt inadvertantly violate)
+    def getUniqueLocations(policy):
+        locations = []
+        for violation in policy:
+            if violation["location"] not in locations:
+                locations.append(violation["location"])
+        return locations
+
+    def addRecovery(recoveries, transitionInfo, recovery):
+        recoveries[transitionInfo["policy"]+"-"+transitionInfo["location"]+"-"+transitionInfo["violatingCondition"]] = {
+            "policy":transitionInfo["policy"],
+            "location":transitionInfo["location"],
+            "violationRef":transitionInfo["violationRef"],
+            "violatingConditionString":transitionInfo["violatingConditionString"],
+            "violatingCondition":transitionInfo["violatingCondition"],
+            "recovery":recovery
+        }
+        return
+
+    print("==========================================")
+    print(" CREATING VIOLATION REF TABLE")
+    print("==========================================")
+
+    def getNumberLocations(policy):
+        return len(getUniqueLocations(policy))
+
+    # Create template to be used as rows (each policy should have a column, which will hold the violation reference)
+    rowTemplate = {}
+    for policy in policies:
+        rowTemplate[policy] = 1 
+
+    numberRowsExpected = 1
+    recoveryKeyLength = {}
+    for policy in policies:
+        # numberLocations = getNumberLocations(policies[policy])
+        numberRowsExpected = numberRowsExpected * (len(policies[policy])) 
+        recoveryKeyLength[policy] = len('{0:b}'.format(len(policies[policy])))
+
+    rowsExample = []
+    rowsExample.append(rowTemplate)
+    for policy in policies:
+        rowCount = len(rowsExample)
+        for i in range(rowCount):
+            for violation in policies[policy]:
+                if violation["violationRef"] > 1: # Added check here to remove don't cares
+                    row = rowsExample[i].copy()
+                    row[policy] = violation["violationRef"]
+                    rowsExample.append(row)
+
+    assert(len(rowsExample) == numberRowsExpected)
+
+    # List of dictionaries with each policy and violation refs
+    import pprint
+    # pprint.pprint(rowsExample)
+
+    print("=============================================")
+    print(" PRE-CRUNCHING EDITS FOR VIOLATION REF COMBO")
+    print("=============================================")
+
+    # Now iterate through this list, pulling each set of acceptable from policies object
+    for row in rowsExample:
+        print(row)
+        acceptableSets = []
+        for policy in row:
+            if row[policy] == 0:
+                print("Dont Care - Add things that dont violate the policy.. in this location..?")
+            else:
+                print("Add", policy, row[policy]-1)#, policies[policy][row[policy]-1]["acceptableConditions"])
+                acceptableSets.append(policies[policy][row[policy]-1]["acceptableConditions"])
+
+        # Do an intersection
+        intersection = acceptableSets[0]
+        for i in range(1, len(acceptableSets)):
+            intersection = getIntersection(intersection, acceptableSets[i])
+
+        print("Intersection:", end=" ")
+        pprint.pprint(intersection)
+        
+        # NOTE: This will fail when intersection is empty set! 
+        assert(len(intersection) > 0)
+        # We are expecting this to occur for some examples, just need to handle it gracefully.
+        # In some cases this assert will fail when the designer has created unenforceable policies
+        # In other cases, the policies will never emit the two violationRef signals at the same time, thus this row/edit/enforcement action doesnt need to exist
+    
+        # TODO: Then do a minEdit
+        selectedRecovery = intersection[list(intersection.keys())[0]] 
+
+        # Get binary recoveryKeys
+        recoveryKey = ""
+        for policy in row:
+            b = '{0:b}'.format(row[policy])
+            # Pad with 0s as required to meet length
+            toPad = recoveryKeyLength[policy] - len(b)
+            b = "0" * toPad + b
+            recoveryKey += b
+        row["recoveryKey"] = recoveryKey 
+
+        row["recovery"] = list(intersection.keys())[0]
+        row["recoveryValue"] = intersection[list(intersection.keys())[0]]
+
+    writeNewXML(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate, rowsExample)
+
+###########################################################################
+
+if __name__ == "__main__":
+    if (len(sys.argv) != 3):
+        print("ERROR\nExpecting 2 arguments: project directory then project file.")
+        print("For the AB example: python rtecomp/main.py AB AB\n")
+        assert(len(sys.argv) == 3)
+    projectDir = sys.argv[1]
+    projectFile = sys.argv[2]
+    main(projectDir, projectFile)
+
+###########################################################################

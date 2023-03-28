@@ -305,7 +305,7 @@ Known limitations:
 * Verilog only
 * Internal varialbes (clocks and constants) need to have independent names (in monolithic composition template only)
 
-### A Word of Caution
+### Describing Policies: A Word of Caution
 Ensure your transitions are described completely in the erte file. 
 
 For example: these two snipets are not guaranteed to result in the same behaviour.
@@ -326,13 +326,24 @@ _While it may be tempting to write conditions as if they are assessed sequential
 
 _Perhaps at some point we can alter the compiler to test all non-violating transitions before violation ones, as this may save time in the erte file creation, but note this isn't truly in the spirit of a TA/DTA._
 
-### Monolithic Composition
+### Composing: Monolithic
 * For hardware synthesis use
 `make verilog_enf run_ebmc PROJECT=pacemaker FILE=p1_and_p2 PARSEARGS=-product COMPILEARGS=-synthesis`
 
 * For EBMC use `make verilog_enf run_ebmc PROJECT=pacemaker FILE=p1_and_p2 PARSEARGS=-product`
 
-### Parallel Composition
+### Composing: Parallel 
+#### Monolithic: 
 * For hardware synthesis use `make verilog_enf PROJECT=abc5 COMPILEARGS=-parallelComposition`
 
-Produces verilog which can be simulated (tested in ModelSim) and synthesised (tested in Quartus).
+	_Produces verilog which can be simulated (tested in ModelSim) and synthesised (tested in Quartus)._
+
+#### Parallel:
+_Currently, you need to manually run the following commands:_
+1. `./easy-rte-parser -i example/[YOUR DIR]/[YOUR FILE].erte -o example/[YOUR DIR]/[YOUR FILE].xml`
+2. `python rtecomp/main.py [YOUR DIR] [YOUR FILE]`
+3. `make verilog_enf PROJECT=[YOUR DIR] FILE=[YOUR FILE]_modified COMPILEARGS=-parallelComposition`
+
+_Produces verilog which can be simulated (tested in ModelSim)_
+
+_TODO: ensure it synthesises in Quartus._
