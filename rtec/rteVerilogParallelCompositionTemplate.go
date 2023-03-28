@@ -21,9 +21,8 @@ const rteVerilogParallelCompositionTemplate = `
 		output reg {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ptc_out,
 		{{end}}
 		
-		//helpful internal variable outputs {{range $vari, $var := $pol.InternalVars}}{{if not $var.Constant}}
-		//output wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_out,
-		{{end}}{{end}}
+		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}// Internal Variables Input
+		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}input wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}},{{end}}{{end}}{{end}}
 		
 		//helpful state output input var{{if $polI}},
 		{{end}}
@@ -45,10 +44,6 @@ const rteVerilogParallelCompositionTemplate = `
 		{{end}}
 		// Recovery ref declare and init
 		reg {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} recoveryReference = 0;
-		//internal vars
-		{{range $vari, $var := $pol.InternalVars}}{{if $var.Constant}}wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}} = {{$var.InitialValue}} {{else}}{{getVerilogType $var.Type}} {{$var.Name}} = 0{{if $var.InitialValue}}/* = {{$var.InitialValue}}*/{{end}}{{end}};
-		{{if not $var.Constant}}reg reset_{{$var.Name}};{{end}}
-		{{end}}
 
 		initial begin
 			recoveryReference = 0;
@@ -56,10 +51,10 @@ const rteVerilogParallelCompositionTemplate = `
 
 		always @* begin
 			
-			// Default no change to inputs/outputs (transparency) 
-
-			{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}// Default no clock reset
-			{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}reset_{{$var.Name}} = 0;{{end}}{{end}}{{end}}
+			// Default no change to inputs (transparency) {{range $index, $var := $block.InputVars}}
+			{{$var.Name}} = {{$var.Name}}_ptc_in;
+			{{end}}
+			recoveryReference = 0;
 
 			{{if $block.Policies}}//input policies
 			{{$pfbEnf := index $pbfPolicies $polI}}
@@ -92,10 +87,18 @@ const rteVerilogParallelCompositionTemplate = `
 	endmodule
 
 	module F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_output (
+		//(Final) inputs (plant to controller){{range $index, $var := $block.InputVars}}
+		input wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ptc_out,
+		{{end}}
+
+
 		//outputs (controller to plant){{range $index, $var := $block.OutputVars}}
 		input wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_in,
 		//output reg {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_out,
 		{{end}}
+
+		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}// Internal Variables Input
+		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}input wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}},{{end}}{{end}}{{end}}
 
 		// State Input
 		input wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state_in,
@@ -119,10 +122,6 @@ const rteVerilogParallelCompositionTemplate = `
 		{{end}}
 		// Recovery ref declare and init
 		reg {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} recoveryReference = 0;
-		//internal vars
-		{{range $vari, $var := $pol.InternalVars}}{{if $var.Constant}}wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}} = {{$var.InitialValue}} {{else}}{{getVerilogType $var.Type}} {{$var.Name}} = 0{{if $var.InitialValue}}/* = {{$var.InitialValue}}*/{{end}}{{end}};
-		{{if not $var.Constant}}reg reset_{{$var.Name}};{{end}}
-		{{end}}
 
 		initial begin
 			recoveryReference = 0;
@@ -130,7 +129,7 @@ const rteVerilogParallelCompositionTemplate = `
 
 		always @* begin
 			// Default no change to inputs/outputs (transparency) {{range $index, $var := $block.InputVars}}
-			{{$var.Name}} = {{$var.Name}}_ptc_in;
+			{{$var.Name}} = {{$var.Name}}_ptc_out;
 			{{end}}
 			{{range $index, $var := $block.OutputVars}}{{$var.Name}} = {{$var.Name}}_ctp_in;
 			{{end}}
@@ -174,6 +173,9 @@ const rteVerilogParallelCompositionTemplate = `
 		// Final outputs (controller to plant) {{range $index, $var := $block.OutputVars}}
 		input wire {{$var.Name}}_ctp_final,
 		{{end}}
+
+		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}// Internal Variables Output
+		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}output wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_out,{{end}}{{end}}{{end}}
 
 		// State Output
 		output wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state_out,
@@ -291,6 +293,11 @@ endmodule
 // Inputs: recovery references from each policy's output module
 // Outputs: final signals for outputs
 module F_LUT_Output_Edit (
+		// Inputs (plant to controller) {{range $index, $var := $block.InputVars}}
+		input wire {{$var.Name}}_ptc_in,
+		output reg {{$var.Name}}_ptc_out, // final
+		{{end}}
+
 		// Outputs (controller to plant) {{range $index, $var := $block.OutputVars}}
 		input wire {{$var.Name}}_ctp_in,
 		output reg {{$var.Name}}_ctp_out, // final
@@ -300,10 +307,11 @@ module F_LUT_Output_Edit (
 		input wire clk
 	);
 
-	{{range $index, $var := $block.OutputVars}}reg {{$var.Name}} = 0;
-	{{end}}
-	initial begin{{range $index, $var := $block.OutputVars}}
-		{{$var.Name}}_ctp_out = 0;{{end}}
+	{{range $index, $var := $block.InputVars}}reg {{$var.Name}} = 0;{{end}}
+	{{range $index, $var := $block.OutputVars}}reg {{$var.Name}} = 0;{{end}}
+	initial begin
+		{{range $index, $var := $block.InputVars}}{{$var.Name}}_ptc_out = 0;{{end}}
+		{{range $index, $var := $block.OutputVars}}{{$var.Name}}_ctp_out = 0;{{end}}
 	end
 
 	// TODO: LUT
@@ -355,13 +363,19 @@ module parallel_F_{{$block.Name}}(
 	input wire {{$var.Name}}_ctp;
 	output wire {{$var.Name}}_ctp_out;
 	{{end}}
+
 	
 	{{range $polI, $pol := $block.Policies}}
+	{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}// Internal Variables
+	{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}};{{end}}{{end}}{{end}}
+
+	// States
 	wire {{getVerilogWidthArray (add (len $pol.States) 1)}} {{$block.Name}}_policy_{{$pol.Name}}_state;
+
+	// Recovery References
 	output wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref;
 	output wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref;
 	{{end}}
-
 	{{range $polI, $pol := $block.Policies}}
 	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_input instance_policy_{{$pol.Name}}_input(
 		.{{$block.Name}}_policy_{{$pol.Name}}_state_in({{$block.Name}}_policy_{{$pol.Name}}_state),
@@ -369,14 +383,22 @@ module parallel_F_{{$block.Name}}(
 		{{range $index, $var := $block.InputVars}}
 		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc),
 		{{end}}
+		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}
+		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}.{{$var.Name}}({{$var.Name}}),{{end}}{{end}}{{end}}
 		.clk(clk)
 	);
 	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_output instance_policy_{{$pol.Name}}_output(
+		{{range $index, $var := $block.InputVars}}
+		.{{$var.Name}}_ptc_out({{$var.Name}}_ptc_out),
+		{{end}}
+
 		{{range $index, $var := $block.OutputVars}}
 		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
 		{{end}}
 		.{{$block.Name}}_policy_{{$pol.Name}}_state_in({{$block.Name}}_policy_{{$pol.Name}}_state),
 		.{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref),
+		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}
+		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}.{{$var.Name}}({{$var.Name}}),{{end}}{{end}}{{end}}
 		.clk(clk)
 	);
 	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_transition instance_policy_{{$pol.Name}}_transition(
@@ -386,6 +408,8 @@ module parallel_F_{{$block.Name}}(
 		{{range $index, $var := $block.OutputVars}}
 		.{{$var.Name}}_ctp_final({{$var.Name}}_ctp_out),
 		{{end}}
+		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}
+		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}.{{$var.Name}}_out({{$var.Name}}),{{end}}{{end}}{{end}}
 		.{{$block.Name}}_policy_{{$pol.Name}}_state_out({{$block.Name}}_policy_{{$pol.Name}}_state),
 		.clk(clk)
 	);
