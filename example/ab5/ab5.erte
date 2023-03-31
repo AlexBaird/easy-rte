@@ -10,6 +10,12 @@ policy AB5 of ab5 {
 	}
 
 	states {
+		
+		init {
+			-> init on (!A and !B) or (A and B);
+			-> s0 on (!A and B): v := 0;
+			-> s1 on (A and !B): v := 0;
+		}
 
 		//first state is initial, and represents "We're waiting for an A"
 		s0 {
@@ -25,8 +31,8 @@ policy AB5 of ab5 {
 
 		//s1 is "we're waiting for a B, and it needs to get here within 5 ticks"
 		s1 {
-			enforce B := 1 if v >= 5;
-			enforce A := 0 if A;
+			//enforce B := 1 if v >= 5;
+			//enforce A := 0 if A;
 			
 			//if we receive nothing, and we aren't over-time, then we do nothing														
 			-> s1 on (!A and !B and v < 5);	
@@ -36,8 +42,8 @@ policy AB5 of ab5 {
 
 			//if we go overtime, or we receive another A, then VIOLATION	(swap these out for manual solutions if desired)		
 			//-> violation on ((v >= 5) or (A and B) or (A and !B));
-			//-> violation on (v >= 5) recover B := 1;
-			//-> violation on (A and B) or (A and !B) recover A := 0;	
+			-> violation on (!B and v >= 5) recover B := 1;
+			-> violation on ((A and B) or (A and !B)) recover A := 0;	
 		}
 	}
 }
