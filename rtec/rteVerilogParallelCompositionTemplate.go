@@ -18,9 +18,7 @@ const rteVerilogParallelCompositionTemplate = `
 		
 		//inputs (plant to controller){{range $index, $var := $block.InputVars}}
 		input wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ptc_in,
-		output reg {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ptc_out,
 		{{end}}
-		
 		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}// Internal Variables Input
 		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}input wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}},{{end}}{{end}}{{end}}
 		
@@ -318,11 +316,13 @@ module F_LUT_Output_Edit (
 	always @(*) begin
 		case({ {{range $polI, $pol := $block.Policies}}{{if not (equal $polI 0)}}, {{end}}{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref{{end}} }) 
 			{{getLUT $block.Name}}
-			default: begin {{range $index, $var := $block.OutputVars}}
+			default: begin {{range $index, $var := $block.InputVars}}
+					{{$var.Name}} = {{$var.Name}}_ptc_in;{{end}}{{range $index, $var := $block.OutputVars}}
 					{{$var.Name}} = {{$var.Name}}_ctp_in;{{end}}
 				end
 		endcase
-		{{range $index, $var := $block.OutputVars}}
+		{{range $index, $var := $block.InputVars}}
+		{{$var.Name}}_ptc_out = {{$var.Name}};{{end}}{{range $index, $var := $block.OutputVars}}
 		{{$var.Name}}_ctp_out = {{$var.Name}};{{end}}
 	end
 
@@ -335,11 +335,13 @@ module parallel_F_{{$block.Name}}(
 		//inputs (plant to controller){{range $index, $var := $block.InputVars}}
 		{{$var.Name}}_ptc,
 		{{$var.Name}}_ptc_out,
+		{{$var.Name}}_ptc_out_ignore,
 		//OUTPUT_{{$var.Name}}_ptc_enf_final,{{end}}
 		
 		//outputs (controller to plant){{range $index, $var := $block.OutputVars}}
 		{{$var.Name}}_ctp,
 		{{$var.Name}}_ctp_out,
+		{{$var.Name}}_ctp_out_ignore,
 		//OUTPUT_{{$var.Name}}_ctp_enf_final,{{end}}
 		
 		//helper outputs{{range $polI, $pol := $block.Policies}}{{range $vari, $var := $pol.InternalVars}}{{if not $var.Constant}}
@@ -350,18 +352,22 @@ module parallel_F_{{$block.Name}}(
 		{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref,
 		{{end}}
 
+		clk_input,
 		clk
 	);
 
 	input wire clk;
+	input wire clk_input;
 
 	{{range $index, $var := $block.InputVars}}
 	input wire {{$var.Name}}_ptc;
-	output wire {{$var.Name}}_ptc_out;{{end}}
+	output wire {{$var.Name}}_ptc_out;
+	output wire {{$var.Name}}_ptc_out_ignore;{{end}}
 	
 	{{range $index, $var := $block.OutputVars}}
 	input wire {{$var.Name}}_ctp;
 	output wire {{$var.Name}}_ctp_out;
+	output wire {{$var.Name}}_ctp_out_ignore;
 	{{end}}
 
 	
@@ -385,7 +391,7 @@ module parallel_F_{{$block.Name}}(
 		{{end}}
 		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}
 		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}.{{$var.Name}}({{$var.Name}}),{{end}}{{end}}{{end}}
-		.clk(clk)
+		.clk(clk_input)
 	);
 	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_output instance_policy_{{$pol.Name}}_output(
 		{{range $index, $var := $block.InputVars}}
@@ -416,11 +422,26 @@ module parallel_F_{{$block.Name}}(
 	
 	{{end}}
 		
-	F_LUT_Output_Edit instance_LUT_Output_Edit(
+	F_LUT_Output_Edit instance_LUT_Input_Edit(
+		{{range $index, $var := $block.InputVars}}
+		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc),
+		.{{$var.Name}}_ptc_out({{$var.Name}}_ptc_out),{{end}}
 		{{range $index, $var := $block.OutputVars}}
 		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
-		.{{$var.Name}}_ctp_out({{$var.Name}}_ctp_out),
+		.{{$var.Name}}_ctp_out({{$var.Name}}_ctp_out_ignore),{{end}}
+		{{range $polI, $pol := $block.Policies}}
+		.{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref),
 		{{end}}
+		.clk(clk_input)
+	);
+
+	F_LUT_Output_Edit instance_LUT_Output_Edit(
+		{{range $index, $var := $block.InputVars}}
+		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc_out),
+		.{{$var.Name}}_ptc_out({{$var.Name}}_ptc_out_ignore),{{end}}
+		{{range $index, $var := $block.OutputVars}}
+		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
+		.{{$var.Name}}_ctp_out({{$var.Name}}_ctp_out),{{end}}
 		{{range $polI, $pol := $block.Policies}}
 		.{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref),
 		{{end}}

@@ -156,7 +156,7 @@ func getMaxRecoveryReference(policy rtedef.Policy) int {
 	}
 	// fmt.Println(maxRecoveryRef)
 
-	return int(maxRecoveryRef)
+	return int(maxRecoveryRef)+1 // Quick fix for getVerilogWidthArray not working quite as expected
 }
 
 func add1IfClock(ctype string) string {
