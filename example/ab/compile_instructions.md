@@ -69,6 +69,10 @@ vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition
 
 vsim work.parallel_F_ab5
 
+add wave -position end  sim:/parallel_F_ab5/clk
+add wave -position end  sim:/parallel_F_ab5/clk_input
+add wave -position end  sim:/parallel_F_ab5/clk_output
+add wave -position end  sim:/parallel_F_ab5/fsm_state
 add wave -position end  sim:/parallel_F_ab5/A_ptc
 add wave -position end  sim:/parallel_F_ab5/A_ptc_out
 add wave -position end  sim:/parallel_F_ab5/ab5_policy_AB5_input_recovery_ref
@@ -77,15 +81,14 @@ add wave -position end  sim:/parallel_F_ab5/ab5_policy_AB5_state
 add wave -position end  sim:/parallel_F_ab5/B_ctp
 add wave -position end  sim:/parallel_F_ab5/B_ctp_ignore
 add wave -position end  sim:/parallel_F_ab5/B_ctp_out
-add wave -position end  sim:/parallel_F_ab5/clk
-add wave -position end  sim:/parallel_F_ab5/clk_input
 add wave -position end  sim:/parallel_F_ab5/v
 
 force -freeze sim:/parallel_F_ab5/A_ptc 0 0
 force -freeze sim:/parallel_F_ab5/B_ctp 0 0
 force -freeze sim:/parallel_F_ab5/clk 0 0
 force -freeze sim:/parallel_F_ab5/clk 1 50, 0 {75 ps} -r 100
-force -freeze sim:/parallel_F_ab5/clk_input 1 0, 0 {25 ps} -r 100
+#force -freeze sim:/parallel_F_ab5/clk_input 1 0, 0 {25 ps} -r 100
+run 1ns
 
 run .5ns
 force -freeze sim:/parallel_F_ab5/A_ptc 1 0
