@@ -152,14 +152,16 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
                 print("Single Clk condition: ", conditionStr)
                 
                 # Assumption is that ONLY the absence of all signals is causing this
-                allAbsent = alphabetTemplate.copy()
-                for sig in allAbsent:
-                    allAbsent[sig] = False
+                any = alphabetTemplate.copy()
+                allAbsent = unwindConditions({getKey(any): any})
+                # for sig in allAbsent:
+                #     allAbsent[sig] = False
                 # print("allAbsent", allAbsent)
 
                 # conditions = {**conditions, **unwindConditions({getKey(allAbsent): allAbsent})}
                 conditions = {getKey(allAbsent):allAbsent}
-                return conditions, clkConditions
+                # return conditions, clkConditions
+                return {}, clkConditions
 
             elif isSingleSignal(conditionStr, alphabetTemplate):
                 print("Single condition: ", conditionStr)
@@ -305,17 +307,29 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
 
         # Condition is either "AND" or "OR"
         print("top condition: ", topCondition)
-        condition = topCondition[1].lower()
-        if (condition == "or"):
-            # OR means APPEND sets of conditions for transition to violation
-            print("OR")
-            topCondition = {**L, **R}
-        elif (condition == "and"):
-            # AND means INTERSECTION of sets of conditions for transition to violation
-            print("AND")
-            topCondition = getIntersection(L, R)
+
+        # Check if either is clock condition
+        if isClockCondition(topCondition[0]):
+            print(topCondition[0], "is clock condition")
+            topCondition = {**R}
+            clk = {**L}
+        elif isClockCondition(topCondition[2]):
+            print(topCondition[2], "is clock condition")
+            topCondition = {**L}
+            clk = {**R}
+        else:
+            # Neither is sole clock condition, so check how we need to combine
+            condition = topCondition[1].lower()
+            if (condition == "or"):
+                # OR means APPEND sets of conditions for transition to violation
+                print("OR")
+                topCondition = {**L, **R}
+            elif (condition == "and"):
+                # AND means INTERSECTION of sets of conditions for transition to violation
+                print("AND")
+                topCondition = getIntersection(L, R)
         
-        clk = {}
+            clk = {}
     else:
         print(b, b[0])
         topCondition, clk = parse_noBracketsCondition(b[0], alphabetTemplate)
