@@ -78,12 +78,15 @@ add wave -position end  sim:/parallel_F_ab5/A_ptc
 add wave -position end  sim:/parallel_F_ab5/A_ptc_out
 add wave -position end  sim:/parallel_F_ab5/A_ptc_out_temp
 add wave -position end  sim:/parallel_F_ab5/A_ptc_out_latched
+add wave -position end  sim:/parallel_F_ab5/A_ptc_out_trans
 add wave -position end  sim:/parallel_F_ab5/ab5_policy_AB5_input_recovery_ref
 add wave -position end  sim:/parallel_F_ab5/ab5_policy_AB5_output_recovery_ref
 add wave -position end  sim:/parallel_F_ab5/ab5_policy_AB5_state
 add wave -position end  sim:/parallel_F_ab5/B_ctp
 add wave -position end  sim:/parallel_F_ab5/B_ctp_ignore
 add wave -position end  sim:/parallel_F_ab5/B_ctp_out
+add wave -position end  sim:/parallel_F_ab5/B_ctp_out_latched
+add wave -position end  sim:/parallel_F_ab5/B_ctp_out_trans
 add wave -position end  sim:/parallel_F_ab5/v
 
 force -freeze sim:/parallel_F_ab5/A_ptc 0 0

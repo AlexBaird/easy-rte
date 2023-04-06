@@ -572,6 +572,12 @@ module F_LUT_Output_Edit (
 endmodule
 
 module parallel_sim_FSM (
+	input wire A_ptc_enf,
+	output wire A_ptc_enf_out,
+	output wire A_ptc_enf_trans,
+	input wire B_ctp_enf,
+	output wire B_ctp_enf_out,
+	output wire B_ctp_enf_trans,
 	input wire clk,
 	output wire clk_input,
 	output wire clk_output,
@@ -579,17 +585,26 @@ module parallel_sim_FSM (
 	output wire [2:0] state_out
 );
 	reg [2:0] c_state = 0;
-	// reg [1:0] n_state = 0;
+
 	reg c_in = 0;
 	reg c_out = 0;
 	reg c_trans = 0;
+	reg A_enf = 0;
+	reg B_enf = 0;
+
+	reg A_trans = 0;
+	reg B_trans = 0;
+
 	always @(posedge clk)
 	begin
+		A_enf = 0;
+		B_enf = 0;
+
 		c_in = 0;
 		c_out = 0;
 		c_trans = 0;
 
-		if (c_state == 3'b100) begin
+		if (c_state == 3'b101) begin
 			c_state = 0;
 		end
 		else begin
@@ -598,18 +613,40 @@ module parallel_sim_FSM (
 
 		case (c_state)
 			3'b001: begin
+				// Input
 				c_in = 1;
 			end
+			3'b010: begin
+				// Express Input 
+				A_enf = A_ptc_enf;
+				A_trans = A_ptc_enf;
+				// Controller
+			end
 			3'b011: begin
+				// Output
 				c_out = 1;
 			end
 			3'b100: begin
+				// Express Output
+				B_enf = B_ctp_enf;
+				B_trans = B_ctp_enf;
+			end
+			3'b101: begin
+				// Transition
+
+				// TODO: New signals here from A and B to pass to transition module
+
 				c_trans = 1;
 			end
 		endcase
 
-
 	end
+
+	assign A_ptc_enf_out = A_enf;
+	assign B_ctp_enf_out = B_enf;
+
+	assign A_ptc_enf_trans = A_trans;
+	assign B_ctp_enf_trans = B_trans;
 
 	assign state_out = c_state;
 	assign clk_input = c_in;
@@ -627,12 +664,15 @@ module parallel_F_ab5(
 		A_ptc_out_ignore,
 		A_ptc_out_temp,
 		A_ptc_out_latched,
+		A_ptc_out_trans,
 		//OUTPUT_A_ptc_enf_final,
 		
 		//outputs (controller to plant)
 		B_ctp,
 		B_ctp_out,
 		B_ctp_out_ignore,
+		B_ctp_out_latched,
+		B_ctp_out_trans,
 		//OUTPUT_B_ctp_enf_final,
 		
 		//helper outputs
@@ -662,10 +702,13 @@ module parallel_F_ab5(
 	output wire A_ptc_out_temp;
 	output wire A_ptc_out_latched;
 	output wire A_ptc_out_ignore;
+	output wire A_ptc_out_trans;
 	
 	input wire B_ctp;
 	output wire B_ctp_out;
+	output wire B_ctp_out_latched;
 	output wire B_ctp_out_ignore;
+	output wire B_ctp_out_trans;
 	
 	// Internal Variables
 	wire [63:0] v;
@@ -678,6 +721,12 @@ module parallel_F_ab5(
 	output wire [2:0] ab5_policy_AB5_output_recovery_ref;
 	
 	parallel_sim_FSM instance_parallel_sim_FSM(
+		.A_ptc_enf(A_ptc_out),
+		.A_ptc_enf_out(A_ptc_out_latched),
+		.A_ptc_enf_trans(A_ptc_out_trans),
+		.B_ctp_enf(B_ctp_out),
+		.B_ctp_enf_out(B_ctp_out_latched),
+		.B_ctp_enf_trans(B_ctp_out_trans),
 		.clk(clk),
 		.clk_input(clk_input),
 		.clk_output(clk_output),
@@ -685,14 +734,6 @@ module parallel_F_ab5(
 		.state_out(fsm_state)
 	);
 
-	F_input_latch instance_F_input_latch(
-		.A_ptc_in(A_ptc_out),
-		.A_ptc_out(A_ptc_out_temp),
-		.A_ptc_out_latched(A_ptc_out_latched),
-		.clk_input(clk_input),
-		.clk_transition(clk_transition)
-	);
-	
 	F_combinatorialVerilog_ab5_policy_AB5_input instance_policy_AB5_input(
 		.ab5_policy_AB5_state_in(ab5_policy_AB5_state),
 		.ab5_policy_AB5_input_recovery_ref(ab5_policy_AB5_input_recovery_ref),
@@ -702,35 +743,7 @@ module parallel_F_ab5(
 		.v(v),
 		.clk(clk_input)
 	);
-	F_combinatorialVerilog_ab5_policy_AB5_output instance_policy_AB5_output(
-		
-		.A_ptc_out(A_ptc_out_temp),
-		
 
-		
-		.B_ctp_in(B_ctp),
-		
-		.ab5_policy_AB5_state_in(ab5_policy_AB5_state),
-		.ab5_policy_AB5_output_recovery_ref(ab5_policy_AB5_output_recovery_ref),
-		
-		.v(v),
-		.clk(clk_output)
-	);
-	F_combinatorialVerilog_ab5_policy_AB5_transition instance_policy_AB5_transition(
-		
-		.A_ptc_final(A_ptc_out_latched),
-		
-		
-		.B_ctp_final(B_ctp_out),
-		
-		
-		.v_out(v),
-		.ab5_policy_AB5_state_out(ab5_policy_AB5_state),
-		.clk(clk_transition)
-	);
-	
-	
-		
 	F_LUT_Output_Edit instance_LUT_Input_Edit(
 		
 		.A_ptc_in(A_ptc),
@@ -742,6 +755,21 @@ module parallel_F_ab5(
 		.ab5_policy_AB5_output_recovery_ref(ab5_policy_AB5_input_recovery_ref),
 		
 		.clk(clk_input)
+	);
+
+	F_combinatorialVerilog_ab5_policy_AB5_output instance_policy_AB5_output(
+		
+		.A_ptc_out(A_ptc_out_trans),
+		
+
+		
+		.B_ctp_in(B_ctp),
+		
+		.ab5_policy_AB5_state_in(ab5_policy_AB5_state),
+		.ab5_policy_AB5_output_recovery_ref(ab5_policy_AB5_output_recovery_ref),
+		
+		.v(v),
+		.clk(clk_output)
 	);
 
 	F_LUT_Output_Edit instance_LUT_Output_Edit(
@@ -756,6 +784,20 @@ module parallel_F_ab5(
 		
 		.clk(clk_output)
 	);
+
+	F_combinatorialVerilog_ab5_policy_AB5_transition instance_policy_AB5_transition(
+		
+		.A_ptc_final(A_ptc_out_trans),
+		
+		
+		.B_ctp_final(B_ctp_out_trans),
+		
+		
+		.v_out(v),
+		.ab5_policy_AB5_state_out(ab5_policy_AB5_state),
+		.clk(clk_transition)
+	);
+
 	
 endmodule
 
