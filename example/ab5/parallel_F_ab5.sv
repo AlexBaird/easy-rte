@@ -472,6 +472,34 @@ module F_LUT_Input_Edit (
 	// TODO: LUT
 	
 endmodule
+
+module F_input_latch (
+		input wire A_ptc_in,
+		output wire A_ptc_out,
+		output wire A_ptc_out_latched,
+		input wire clk_input,
+		input wire clk_transition
+	);
+
+	reg A_temp = 0;
+	reg A_latch = 0;
+
+	always @(A_ptc_in, clk_transition, clk_input) begin
+		if (clk_input == 1) begin
+			A_latch = A_ptc_in;
+		end
+		if (clk_input == 0) begin
+			A_temp = 0;
+		end
+		else begin
+			A_temp = A_ptc_in;			
+		end
+	end
+
+	assign A_ptc_out = A_temp;
+	assign A_ptc_out_latched = A_latch;
+
+endmodule
 	
 // OUTPUT Select Look Up Table
 // Inputs: recovery references from each policy's output module
@@ -499,7 +527,7 @@ module F_LUT_Output_Edit (
 	end
 
 	// TODO: LUT
-	always @(*) begin
+	always @(posedge clk) begin
 		case({ ab5_policy_AB5_output_recovery_ref }) 
 			3'b001: begin
 				A = 1;
@@ -547,31 +575,46 @@ module parallel_sim_FSM (
 	input wire clk,
 	output wire clk_input,
 	output wire clk_output,
-	output wire [1:0] state_out
+	output wire clk_transition,
+	output wire [2:0] state_out
 );
-	reg [1:0] c_state = 0;
+	reg [2:0] c_state = 0;
 	// reg [1:0] n_state = 0;
 	reg c_in = 0;
 	reg c_out = 0;
+	reg c_trans = 0;
 	always @(posedge clk)
 	begin
-		c_state = c_state + 1;
 		c_in = 0;
 		c_out = 0;
+		c_trans = 0;
+
+		if (c_state == 3'b100) begin
+			c_state = 0;
+		end
+		else begin
+			c_state = c_state + 1;
+		end
 
 		case (c_state)
-			2'b01: begin
+			3'b001: begin
 				c_in = 1;
 			end
-			2'b11: begin
+			3'b011: begin
 				c_out = 1;
 			end
+			3'b100: begin
+				c_trans = 1;
+			end
 		endcase
+
+
 	end
 
 	assign state_out = c_state;
 	assign clk_input = c_in;
 	assign clk_output = c_out;
+	assign clk_transition = c_trans;
 
 endmodule
 
@@ -582,6 +625,8 @@ module parallel_F_ab5(
 		A_ptc,
 		A_ptc_out,
 		A_ptc_out_ignore,
+		A_ptc_out_temp,
+		A_ptc_out_latched,
 		//OUTPUT_A_ptc_enf_final,
 		
 		//outputs (controller to plant)
@@ -601,6 +646,7 @@ module parallel_F_ab5(
 
 		clk_input,
 		clk_output,
+		clk_transition,
 		clk
 	);
 
@@ -608,10 +654,13 @@ module parallel_F_ab5(
 
 	output wire clk_input;
 	output wire clk_output;
-	output wire [1:0] fsm_state;
+	output wire clk_transition;
+	output wire [2:0] fsm_state;
 
 	input wire A_ptc;
 	output wire A_ptc_out;
+	output wire A_ptc_out_temp;
+	output wire A_ptc_out_latched;
 	output wire A_ptc_out_ignore;
 	
 	input wire B_ctp;
@@ -632,7 +681,16 @@ module parallel_F_ab5(
 		.clk(clk),
 		.clk_input(clk_input),
 		.clk_output(clk_output),
+		.clk_transition(clk_transition),
 		.state_out(fsm_state)
+	);
+
+	F_input_latch instance_F_input_latch(
+		.A_ptc_in(A_ptc_out),
+		.A_ptc_out(A_ptc_out_temp),
+		.A_ptc_out_latched(A_ptc_out_latched),
+		.clk_input(clk_input),
+		.clk_transition(clk_transition)
 	);
 	
 	F_combinatorialVerilog_ab5_policy_AB5_input instance_policy_AB5_input(
@@ -646,7 +704,7 @@ module parallel_F_ab5(
 	);
 	F_combinatorialVerilog_ab5_policy_AB5_output instance_policy_AB5_output(
 		
-		.A_ptc_out(A_ptc_out),
+		.A_ptc_out(A_ptc_out_temp),
 		
 
 		
@@ -660,7 +718,7 @@ module parallel_F_ab5(
 	);
 	F_combinatorialVerilog_ab5_policy_AB5_transition instance_policy_AB5_transition(
 		
-		.A_ptc_final(A_ptc_out),
+		.A_ptc_final(A_ptc_out_latched),
 		
 		
 		.B_ctp_final(B_ctp_out),
@@ -668,7 +726,7 @@ module parallel_F_ab5(
 		
 		.v_out(v),
 		.ab5_policy_AB5_state_out(ab5_policy_AB5_state),
-		.clk(clk_output)
+		.clk(clk_transition)
 	);
 	
 	
@@ -688,7 +746,7 @@ module parallel_F_ab5(
 
 	F_LUT_Output_Edit instance_LUT_Output_Edit(
 		
-		.A_ptc_in(A_ptc_out),
+		.A_ptc_in(A_ptc_out_latched),
 		.A_ptc_out(A_ptc_out_ignore),
 		
 		.B_ctp_in(B_ctp),

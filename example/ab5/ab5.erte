@@ -42,6 +42,7 @@ policy AB5 of ab5 {
 
 			//if we go overtime, or we receive another A, then VIOLATION	(swap these out for manual solutions if desired)		
 			//-> violation on ((v >= 5) or (A and B) or (A and !B));
+			-> violation on ((!A and !B) and (v >= 5));
 			-> violation on ((A and !B) and (v >= 5));
 			-> violation on ((A and B) and (v >= 5)) recover A := 0;
 			-> violation on ((A and B) or (A and !B)) recover A := 0;	
