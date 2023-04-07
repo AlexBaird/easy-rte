@@ -47,7 +47,7 @@ const rteVerilogParallelCompositionTemplate = `
 			recoveryReference = 0;
 		end
 
-		always @* begin
+		always @({{$block.Name}}_policy_{{$pol.Name}}_state_in, {{range $index, $var := $block.InputVars}}{{$var.Name}}_ptc_in,{{end}} clk) begin
 			
 			// Default no change to inputs (transparency) {{range $index, $var := $block.InputVars}}
 			{{$var.Name}} = {{$var.Name}}_ptc_in;
@@ -125,7 +125,7 @@ const rteVerilogParallelCompositionTemplate = `
 			recoveryReference = 0;
 		end
 
-		always @* begin
+		always @({{$block.Name}}_policy_{{$pol.Name}}_state_in, {{range $index, $var := $block.OutputVars}}{{$var.Name}}_ctp_in,{{end}} clk) begin
 			// Default no change to inputs/outputs (transparency) {{range $index, $var := $block.InputVars}}
 			{{$var.Name}} = {{$var.Name}}_ptc_out;
 			{{end}}
@@ -312,8 +312,8 @@ module F_LUT_Output_Edit (
 		{{range $index, $var := $block.OutputVars}}{{$var.Name}}_ctp_out = 0;{{end}}
 	end
 
-	// TODO: LUT
-	always @(*) begin
+	// LUT
+	always @(posedge clk) begin
 		case({ {{range $polI, $pol := $block.Policies}}{{if not (equal $polI 0)}}, {{end}}{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref{{end}} }) 
 			{{getLUT $block.Name}}
 			default: begin {{range $index, $var := $block.InputVars}}
@@ -329,6 +329,89 @@ module F_LUT_Output_Edit (
 
 endmodule
 
+module parallel_sim_FSM ({{range $index, $var := $block.InputVars}}
+	input wire {{$var.Name}}_ptc_enf,
+	output wire {{$var.Name}}_ptc_enf_out,
+	output wire {{$var.Name}}_ptc_enf_trans,{{end}}
+	{{range $index, $var := $block.OutputVars}}
+	input wire {{$var.Name}}_ctp_enf,
+	output wire {{$var.Name}}_ctp_enf_out,
+	output wire {{$var.Name}}_ctp_enf_trans,
+	{{end}}
+	input wire clk,
+	output wire clk_input,
+	output wire clk_output,
+	output wire clk_transition,
+	output wire [2:0] state_out
+);
+	reg [2:0] c_state = 0;
+
+	reg c_in = 0;
+	reg c_out = 0;
+	reg c_trans = 0;
+	{{range $index, $var := $block.InputVars}}
+	reg {{$var.Name}}_enf = 0;
+	reg {{$var.Name}}_trans = 0;{{end}}
+	{{range $index, $var := $block.OutputVars}}
+	reg {{$var.Name}}_enf = 0;
+	reg {{$var.Name}}_trans = 0;
+	{{end}}
+	always @(posedge clk)
+	begin{{range $index, $var := $block.InputVars}}
+		{{$var.Name}}_enf = 0;{{end}}{{range $index, $var := $block.OutputVars}}
+		{{$var.Name}}_enf = 0;
+		{{end}}
+		c_in = 0;
+		c_out = 0;
+		c_trans = 0;
+
+		if (c_state == 3'b101) begin
+			c_state = 0;
+		end
+		else begin
+			c_state = c_state + 1;
+		end
+
+		case (c_state)
+		3'b001: begin
+			// Input
+			c_in = 1;
+		end
+		3'b010: begin
+			// Express Input 
+			A_enf = A_ptc_enf;
+			A_trans = A_ptc_enf;
+			// Controller
+		end
+		3'b011: begin
+			// Output
+			c_out = 1;
+		end
+		3'b100: begin
+			// Express Output
+			B_enf = B_ctp_enf;
+			B_trans = B_ctp_enf;
+		end
+		3'b101: begin
+			// Transition
+			c_trans = 1;
+		end
+	endcase
+
+	end
+	{{range $index, $var := $block.InputVars}}
+	assign {{$var.Name}}_ptc_enf_out = {{$var.Name}}_enf;
+	assign {{$var.Name}}_ptc_enf_trans = {{$var.Name}}_trans;{{end}}
+	{{range $index, $var := $block.OutputVars}}
+	assign {{$var.Name}}_ctp_enf_out = {{$var.Name}}_enf;
+	assign {{$var.Name}}_ctp_enf_trans = {{$var.Name}}_trans;{{end}}
+
+	assign state_out = c_state;
+	assign clk_input = c_in;
+	assign clk_output = c_out;
+	assign clk_transition = c_trans;
+
+endmodule
 
 module parallel_F_{{$block.Name}}(
 
@@ -336,12 +419,16 @@ module parallel_F_{{$block.Name}}(
 		{{$var.Name}}_ptc,
 		{{$var.Name}}_ptc_out,
 		{{$var.Name}}_ptc_out_ignore,
+		{{$var.Name}}_ptc_out_latched,
+		{{$var.Name}}_ptc_out_trans,
 		//OUTPUT_{{$var.Name}}_ptc_enf_final,{{end}}
 		
 		//outputs (controller to plant){{range $index, $var := $block.OutputVars}}
 		{{$var.Name}}_ctp,
 		{{$var.Name}}_ctp_out,
 		{{$var.Name}}_ctp_out_ignore,
+		{{$var.Name}}_ctp_out_latched,
+		{{$var.Name}}_ctp_out_trans,
 		//OUTPUT_{{$var.Name}}_ctp_enf_final,{{end}}
 		
 		//helper outputs{{range $polI, $pol := $block.Policies}}{{range $vari, $var := $pol.InternalVars}}{{if not $var.Constant}}
@@ -351,26 +438,32 @@ module parallel_F_{{$block.Name}}(
 		{{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref,
 		{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref,
 		{{end}}
+		fsm_state,
 
 		clk_input,
+		clk_output,
+		clk_transition,
 		clk
 	);
 
 	input wire clk;
-	input wire clk_input;
 
+	output wire clk_input;
+	output wire clk_output;
+	output wire clk_transition;
+	output wire [2:0] fsm_state;
 	{{range $index, $var := $block.InputVars}}
 	input wire {{$var.Name}}_ptc;
 	output wire {{$var.Name}}_ptc_out;
-	output wire {{$var.Name}}_ptc_out_ignore;{{end}}
-	
+	output wire {{$var.Name}}_ptc_out_latched;
+	output wire {{$var.Name}}_ptc_out_ignore;
+	output wire {{$var.Name}}_ptc_out_trans;{{end}}
 	{{range $index, $var := $block.OutputVars}}
 	input wire {{$var.Name}}_ctp;
 	output wire {{$var.Name}}_ctp_out;
+	output wire {{$var.Name}}_ctp_out_latched;
 	output wire {{$var.Name}}_ctp_out_ignore;
-	{{end}}
-
-	
+	output wire {{$var.Name}}_ctp_out_trans;{{end}}
 	{{range $polI, $pol := $block.Policies}}
 	{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}// Internal Variables
 	{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}};{{end}}{{end}}{{end}}
@@ -382,46 +475,32 @@ module parallel_F_{{$block.Name}}(
 	output wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref;
 	output wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref;
 	{{end}}
+	parallel_sim_FSM instance_parallel_sim_FSM({{range $index, $var := $block.InputVars}}
+		.{{$var.Name}}_ptc_enf({{$var.Name}}_ptc_out),
+		.{{$var.Name}}_ptc_enf_out({{$var.Name}}_ptc_out_latched),
+		.{{$var.Name}}_ptc_enf_trans({{$var.Name}}_ptc_out_trans),{{end}}
+		{{range $index, $var := $block.OutputVars}}
+		.{{$var.Name}}_ctp_enf({{$var.Name}}_ctp_out),
+		.{{$var.Name}}_ctp_enf_out({{$var.Name}}_ctp_out_latched),
+		.{{$var.Name}}_ctp_enf_trans({{$var.Name}}_ctp_out_trans),{{end}}
+		
+		.clk(clk),
+		.clk_input(clk_input),
+		.clk_output(clk_output),
+		.clk_transition(clk_transition),
+		.state_out(fsm_state)
+	);
 	{{range $polI, $pol := $block.Policies}}
 	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_input instance_policy_{{$pol.Name}}_input(
 		.{{$block.Name}}_policy_{{$pol.Name}}_state_in({{$block.Name}}_policy_{{$pol.Name}}_state),
 		.{{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref),
 		{{range $index, $var := $block.InputVars}}
-		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc),
-		{{end}}
+		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc),{{end}}
 		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}
 		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}.{{$var.Name}}({{$var.Name}}),{{end}}{{end}}{{end}}
 		.clk(clk_input)
 	);
-	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_output instance_policy_{{$pol.Name}}_output(
-		{{range $index, $var := $block.InputVars}}
-		.{{$var.Name}}_ptc_out({{$var.Name}}_ptc_out),
-		{{end}}
-
-		{{range $index, $var := $block.OutputVars}}
-		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
-		{{end}}
-		.{{$block.Name}}_policy_{{$pol.Name}}_state_in({{$block.Name}}_policy_{{$pol.Name}}_state),
-		.{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref),
-		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}
-		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}.{{$var.Name}}({{$var.Name}}),{{end}}{{end}}{{end}}
-		.clk(clk)
-	);
-	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_transition instance_policy_{{$pol.Name}}_transition(
-		{{range $index, $var := $block.InputVars}}
-		.{{$var.Name}}_ptc_final({{$var.Name}}_ptc_out),
-		{{end}}
-		{{range $index, $var := $block.OutputVars}}
-		.{{$var.Name}}_ctp_final({{$var.Name}}_ctp_out),
-		{{end}}
-		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}
-		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}.{{$var.Name}}_out({{$var.Name}}),{{end}}{{end}}{{end}}
-		.{{$block.Name}}_policy_{{$pol.Name}}_state_out({{$block.Name}}_policy_{{$pol.Name}}_state),
-		.clk(clk)
-	);
-	
 	{{end}}
-		
 	F_LUT_Output_Edit instance_LUT_Input_Edit(
 		{{range $index, $var := $block.InputVars}}
 		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc),
@@ -434,10 +513,25 @@ module parallel_F_{{$block.Name}}(
 		{{end}}
 		.clk(clk_input)
 	);
+	{{range $polI, $pol := $block.Policies}}
+	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_output instance_policy_{{$pol.Name}}_output(
+		{{range $index, $var := $block.InputVars}}
+		.{{$var.Name}}_ptc_out({{$var.Name}}_ptc_out_trans),
+		{{end}}
 
+		{{range $index, $var := $block.OutputVars}}
+		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
+		{{end}}
+		.{{$block.Name}}_policy_{{$pol.Name}}_state_in({{$block.Name}}_policy_{{$pol.Name}}_state),
+		.{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref),
+		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}
+		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}.{{$var.Name}}({{$var.Name}}),{{end}}{{end}}{{end}}
+		.clk(clk_output)
+	);
+	{{end}}
 	F_LUT_Output_Edit instance_LUT_Output_Edit(
 		{{range $index, $var := $block.InputVars}}
-		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc_out),
+		.{{$var.Name}}_ptc_in({{$var.Name}}_ptc_out_latched),
 		.{{$var.Name}}_ptc_out({{$var.Name}}_ptc_out_ignore),{{end}}
 		{{range $index, $var := $block.OutputVars}}
 		.{{$var.Name}}_ctp_in({{$var.Name}}_ctp),
@@ -445,9 +539,23 @@ module parallel_F_{{$block.Name}}(
 		{{range $polI, $pol := $block.Policies}}
 		.{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref({{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref),
 		{{end}}
-		.clk(clk)
+		.clk(clk_output)
 	);
-	
+	{{range $polI, $pol := $block.Policies}}
+	F_combinatorialVerilog_{{$block.Name}}_policy_{{$pol.Name}}_transition instance_policy_{{$pol.Name}}_transition(
+		{{range $index, $var := $block.InputVars}}
+		.{{$var.Name}}_ptc_final({{$var.Name}}_ptc_out_trans),
+		{{end}}
+		{{range $index, $var := $block.OutputVars}}
+		.{{$var.Name}}_ctp_final({{$var.Name}}_ctp_out_trans),
+		{{end}}
+		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}
+		{{range $vari, $var := $pfbEnf.OutputPolicy.InternalVars}}{{if not $var.Constant}}.{{$var.Name}}_out({{$var.Name}}),{{end}}{{end}}{{end}}
+		.{{$block.Name}}_policy_{{$pol.Name}}_state_out({{$block.Name}}_policy_{{$pol.Name}}_state),
+		.clk(clk_transition)
+	);
+	{{end}}
+
 endmodule
 
 {{end}}
