@@ -63,9 +63,10 @@ def getKey(alphabetOption):
     return key
 
 def unwindConditions(conditions):
-    print('Unwinding ', conditions)
+    # print('Unwinding')
+    # print('Unwinding ', conditions)
     unwound = {}
-    print("At start are any more to unwind??", areAnyNone(conditions))
+    # print("At start are any more to unwind??", areAnyNone(conditions))
     if not areAnyNone(conditions):
         for conditionKey in conditions:
             unwound[conditionKey] = conditions[conditionKey]
@@ -79,10 +80,10 @@ def unwindConditions(conditions):
                 falseOption[k] = False
                 unwound[getKey(trueOption)] = trueOption
                 unwound[getKey(falseOption)] = falseOption
-    print("Any more to unwind??", areAnyNone(unwound))
+    # print("Any more to unwind??", areAnyNone(unwound))
     while areAnyNone(unwound) == True:
         unwound = unwindConditions(unwound)
-    print("Unwound to", unwound)
+    # print("Unwound to", unwound)
     return unwound
 
 def addIfNotPresent(existing, new):
@@ -149,7 +150,7 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
             print("Problem parsing no brackets condition: ", conditionStr)
             if isClockCondition(conditionStr):
 
-                print("Single Clk condition: ", conditionStr)
+                # print("Single Clk condition: ", conditionStr)
                 
                 # Assumption is that ONLY the absence of all signals is causing this
                 any = alphabetTemplate.copy()
@@ -164,7 +165,7 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
                 return {}, clkConditions
 
             elif isSingleSignal(conditionStr, alphabetTemplate):
-                print("Single condition: ", conditionStr)
+                # print("Single condition: ", conditionStr)
                 single = parse_singleSignal(conditionStr)
                 condition = alphabetTemplate.copy()
                 condition[single["signal"]] = single["value"]
@@ -194,7 +195,7 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
 
         conditions = {**conditions, **unwindConditions({getKey(condition2): condition2})}
     
-    print(conditionStr, "becomes", conditions, clkConditions)
+    # print(conditionStr, "becomes", conditions, clkConditions)
     return conditions, clkConditions
 
 def getCharacterRepeated(count, char):
@@ -232,7 +233,7 @@ def removeClockConditions(conditions, alphabetTemplate):
 def removeClockConditionKeys(conditions, alphabetTemplate):
     withoutClockConditions = {}
     for condition in conditions:
-        print('hi2', condition, conditions)#[condition], len(alphabetTemplate))
+        # print('hi2', condition, conditions)#[condition], len(alphabetTemplate))
         # conditionValue = {}
         # for value in conditions[condition]:
         #     if value in alphabetTemplate:
@@ -251,7 +252,7 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
 
     # Remove spaces
     a = conditionString.replace(" ", "")
-    print("Original", a)
+    # print("Original", a)
     
     # Count number of brackets
     left = a.count("(")
@@ -272,16 +273,16 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
         while True:
             # Keep going till all top brackets gone
             if parse("({})", b[0]) is not None:
-                print("Part:", b[0])
+                # print("Part:", b[0])
                 b = parse("({})", b[0])
                 count += 1
             else:
                 break
     
-        print("Top brackets removed:", count, b[0])
+        # print("Top brackets removed:", count, b[0])
     else: 
         b=[]
-        print("No brackets to remove..?", a)
+        # print("No brackets to remove..?", a)
         b.append(a)
 
     if count > 0:
@@ -289,10 +290,10 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
         # Example: !AandB)or(AandB 
         # Becomes: <Result ('!AandB', 'or', 'AandB') {}>
         formatString = "{}" + getCharacterRepeated(count, ")") + "{}" + getCharacterRepeated(count, "(") + "{}"
-        print(formatString)
+        # print(formatString)
         topCondition = parse(formatString, b[0])
 
-        print(topCondition)
+        # print(topCondition)
         
         # TODO: Recursively find all transitions - keep going till you have ONLY ANDS in a list/table
 
@@ -306,15 +307,15 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
         R, clkR = convertConditionToDictOfBools("("+RHS+")", alphabetTemplate)
 
         # Condition is either "AND" or "OR"
-        print("top condition: ", topCondition)
+        # print("top condition: ", topCondition)
 
         # Check if either is clock condition
         if isClockCondition(topCondition[0]):
-            print(topCondition[0], "is clock condition")
+            # print(topCondition[0], "is clock condition")
             topCondition = {**R}
             clk = {**L}
         elif isClockCondition(topCondition[2]):
-            print(topCondition[2], "is clock condition")
+            # print(topCondition[2], "is clock condition")
             topCondition = {**L}
             clk = {**R}
         else:
@@ -334,13 +335,13 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
         print(b, b[0])
         topCondition, clk = parse_noBracketsCondition(b[0], alphabetTemplate)
 
-    print("Returning: ", topCondition, "and clk", clk)
+    # print("Returning: ", topCondition, "and clk", clk)
     return topCondition, clk
 
 def getAcceptableTransitions(violationConditions, alphabetTemplate):
     violationConditionsNoClocks = removeClockConditionKeys(violationConditions, alphabetTemplate)
-    print("with clocks:", violationConditions)
-    print("without clocks:", violationConditionsNoClocks)
+    # print("with clocks:", violationConditions)
+    # print("without clocks:", violationConditionsNoClocks)
     any = alphabetTemplate.copy()
     acceptableTransitions = {}
     allConditions = unwindConditions({getKey(any): any})
@@ -350,8 +351,10 @@ def getAcceptableTransitions(violationConditions, alphabetTemplate):
         else:
             acceptableTransitions[condition] = allConditions[condition]
 
-    print("Acceptable Transitions (", len(acceptableTransitions), ") -", acceptableTransitions)
-    print("Violating Transitions (", len(violationConditions), ") -", violationConditions)
+    # print("Acceptable Transitions (", len(acceptableTransitions), ") -", acceptableTransitions)
+    print("Acceptable Transitions (", len(acceptableTransitions), ")")
+    print("Violating Transitions (", len(violationConditions), ")")
+    # print("Violating Transitions (", len(violationConditions), ") -", violationConditions)
     assert(len(acceptableTransitions) + len(violationConditions) == len(allConditions))
     return acceptableTransitions
 
@@ -549,10 +552,10 @@ def main(dir, file):
         locations = []
         for transition in policy.iter('PTransition'):
             for child in transition.iter('Recover'):
-                print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
+                # print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
                 violationConditions, _ = convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
-                print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
-                print("Violation Conditions: ", violationConditions)
+                # print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
+                # print("Violation Conditions: ", violationConditions)
                 acceptable = getAcceptableTransitions(violationConditions, alphabetTemplate)
                 location = transition.find("Source").text
 
@@ -644,14 +647,20 @@ def main(dir, file):
     print("=============================================")
 
     # Now iterate through this list, pulling each set of acceptable from policies object
+    rowNumber = 0
     for row in rowsExample:
-        print(row)
+        # print(row)
+        totalRows = len(rowsExample)
+        rowNumber += 1
+        if (rowNumber / totalRows * 100) % 5 == 0:
+            print(rowNumber / totalRows * 100, totalRows, rowNumber)
+        
         acceptableSets = []
         for policy in row:
             if row[policy] == 0:
                 print("Dont Care - Add things that dont violate the policy.. in this location..?")
             else:
-                print("Add", policy, row[policy]-1)#, policies[policy][row[policy]-1]["acceptableConditions"])
+                # print("Add", policy, row[policy]-1)#, policies[policy][row[policy]-1]["acceptableConditions"])
                 acceptableSets.append(policies[policy][row[policy]-1]["acceptableConditions"])
 
         # Do an intersection
@@ -659,8 +668,8 @@ def main(dir, file):
         for i in range(1, len(acceptableSets)):
             intersection = getIntersection(intersection, acceptableSets[i])
 
-        print("Intersection:", end=" ")
-        pprint.pprint(intersection)
+        # print("Intersection:", end=" ")
+        # pprint.pprint(intersection)
         
         # NOTE: This will fail when intersection is empty set! 
         assert(len(intersection) > 0)
