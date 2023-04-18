@@ -92,7 +92,7 @@ const rteVerilogParallelCompositionTemplate = `
 
 		//outputs (controller to plant){{range $index, $var := $block.OutputVars}}
 		input wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_in,
-		//output reg {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_out,
+		//output wire {{getVerilogWidthArrayForType $var.Type}} {{$var.Name}}_ctp_out,
 		{{end}}
 
 		{{$pfbEnf := index $pbfPolicies $polI}}{{if not $pfbEnf}}//Policy is broken!{{else}}// Internal Variables Input
@@ -270,22 +270,21 @@ const rteVerilogParallelCompositionTemplate = `
 
 	{{end}}
 
+// NOTE: Input Select LUT uses Output LUT :)
 // INPUT Select Look Up Table
 // Inputs: recovery references from each policy's input module
 // Outputs: final signals for inputs
-module F_LUT_Input_Edit (
+//module F_LUT_Input_Edit (
 		// Inputs (plant to controller) {{range $index, $var := $block.InputVars}}
-		input wire {{$var.Name}}_ptc_in,
-		output reg {{$var.Name}}_ptc_out, // final
+		//input wire {{$var.Name}}_ptc_in,
+		//output wire {{$var.Name}}_ptc_out, // final
 		{{end}}
-		{{range $polI, $pol := $block.Policies}}input reg {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref,
+		{{range $polI, $pol := $block.Policies}}//input wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_input_recovery_ref,
 		{{end}}
-		input wire clk
-	);
-
-	// TODO: LUT
+		//input wire clk
+	//);
 	
-endmodule
+//endmodule
 	
 // OUTPUT Select Look Up Table
 // Inputs: recovery references from each policy's output module
@@ -293,24 +292,25 @@ endmodule
 module F_LUT_Output_Edit (
 		// Inputs (plant to controller) {{range $index, $var := $block.InputVars}}
 		input wire {{$var.Name}}_ptc_in,
-		output reg {{$var.Name}}_ptc_out, // final
+		output wire {{$var.Name}}_ptc_out, // final
 		{{end}}
 
 		// Outputs (controller to plant) {{range $index, $var := $block.OutputVars}}
 		input wire {{$var.Name}}_ctp_in,
-		output reg {{$var.Name}}_ctp_out, // final
+		output wire {{$var.Name}}_ctp_out, // final
 		{{end}}
-		{{range $polI, $pol := $block.Policies}}input reg {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref,
+		{{range $polI, $pol := $block.Policies}}input wire {{getVerilogWidthArray (getMaxRecoveryReference $pol)}} {{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref,
 		{{end}}
 		input wire clk
 	);
 
 	{{range $index, $var := $block.InputVars}}reg {{$var.Name}} = 0;{{end}}
 	{{range $index, $var := $block.OutputVars}}reg {{$var.Name}} = 0;{{end}}
-	initial begin
-		{{range $index, $var := $block.InputVars}}{{$var.Name}}_ptc_out = 0;{{end}}
-		{{range $index, $var := $block.OutputVars}}{{$var.Name}}_ctp_out = 0;{{end}}
-	end
+	
+	//initial begin
+		{{range $index, $var := $block.InputVars}}// {{$var.Name}}_ptc_out = 0;{{end}}
+		{{range $index, $var := $block.OutputVars}}// {{$var.Name}}_ctp_out = 0;{{end}}
+	//end
 
 	// LUT
 	always @(posedge clk) begin
@@ -322,11 +322,14 @@ module F_LUT_Output_Edit (
 				end
 		endcase
 		{{range $index, $var := $block.InputVars}}
-		{{$var.Name}}_ptc_out = {{$var.Name}};{{end}}{{range $index, $var := $block.OutputVars}}
-		{{$var.Name}}_ctp_out = {{$var.Name}};{{end}}
+		//{{$var.Name}}_ptc_out = {{$var.Name}};{{end}}{{range $index, $var := $block.OutputVars}}
+		//{{$var.Name}}_ctp_out = {{$var.Name}};{{end}}
+
 	end
-
-
+	{{range $index, $var := $block.InputVars}}
+	assign {{$var.Name}}_ptc_out = {{$var.Name}};{{end}}{{range $index, $var := $block.OutputVars}}
+	assign {{$var.Name}}_ctp_out = {{$var.Name}};{{end}}
+	
 endmodule
 
 module parallel_sim_FSM ({{range $index, $var := $block.InputVars}}
