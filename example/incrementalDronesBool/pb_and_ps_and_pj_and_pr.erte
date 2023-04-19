@@ -1,0 +1,97 @@
+function pb_and_ps_and_pj_and_pr;
+interface of pb_and_ps_and_pj_and_pr {
+	in bool X_MIN, Y_MIN;
+	in bool X_MAX, Y_MAX;
+	//, x2, y2;
+	//in bool rpm, rpm2;
+	out bool X_UP, X_DOWN;
+	out bool Y_UP, Y_DOWN;
+	out bool RPM_UP, RPM_DOWN;
+	//out bool x2_up, x2_down, y2_up, y2_down, rpm2_up, rpm2_down;
+}
+
+policy ps of pb_and_ps_and_pj_and_pr {
+	states {
+        
+		l0 {
+			-> l0 on ((!X_DOWN && X_UP)) && ((Y_DOWN && !Y_UP));
+			-> l0 on ((!X_DOWN && X_UP)) && ((!Y_DOWN && Y_UP));
+			-> l0 on ((!X_DOWN && X_UP)) && ((!Y_DOWN && !Y_UP));
+			-> l0 on ((X_DOWN && !X_UP)) && ((Y_DOWN && !Y_UP));
+			-> l0 on ((X_DOWN && !X_UP)) && ((!Y_DOWN && Y_UP));
+			-> l0 on ((X_DOWN && !X_UP)) && ((!Y_DOWN && !Y_UP));
+			-> l0 on ((!X_DOWN && !X_UP)) && ((Y_DOWN && !Y_UP));
+			-> l0 on ((!X_DOWN && !X_UP)) && ((!Y_DOWN && Y_UP));
+			-> l0 on ((!X_DOWN && !X_UP)) && ((!Y_DOWN && !Y_UP));
+			-> violation on (X_DOWN && X_UP) recover X_UP:= 0;
+			-> violation on (Y_DOWN && Y_UP) recover Y_UP:= 0;
+		}
+
+	}
+}
+
+policy pb of pb_and_ps_and_pj_and_pr {
+	states {
+        
+		b0 {
+			-> b0 on ((X_DOWN and X_MIN)) and ((Y_DOWN and Y_MIN));
+			-> b0 on ((X_DOWN and X_MIN)) and ((!Y_DOWN and !Y_UP));
+			-> b0 on ((X_DOWN and X_MIN)) and ((Y_UP and Y_MAX));
+			-> b0 on ((!X_DOWN and !X_UP)) and ((Y_DOWN and Y_MIN));
+			-> b0 on ((!X_DOWN and !X_UP)) and ((!Y_DOWN and !Y_UP));
+			-> b0 on ((!X_DOWN and !X_UP)) and ((Y_UP and Y_MAX));
+			-> b0 on ((X_UP and X_MAX)) and ((Y_DOWN and Y_MIN));
+			-> b0 on ((X_UP and X_MAX)) and ((!Y_DOWN and !Y_UP));
+			-> b0 on ((X_UP and X_MAX)) and ((Y_UP and Y_MAX));
+			-> violation on (X_DOWN and X_MIN) recover X_DOWN:= 0;
+			-> violation on (X_UP and X_MAX) recover X_UP:= 0;
+			-> violation on (Y_DOWN and Y_MIN) recover Y_DOWN:= 0;
+			-> violation on (Y_UP and Y_MAX) recover Y_UP:= 0;
+		}
+
+	}
+}
+
+
+
+policy pj of pb_and_ps_and_pj_and_pr {
+	internals {
+		constant uint8_t THRESHOLD := 5; 
+		dtimer_t V1;
+	}
+
+	states {
+        
+		l0 {
+			-> l0 on (!X_UP && !Y_UP && !RPM_UP);
+			-> l1 on (X_UP || Y_UP || RPM_UP): V1 := 0;
+		}
+
+		l1 {
+			-> l1 on (X_UP || X_DOWN || Y_UP || (Y_DOWN && V1 <= THRESHOLD) || RPM_UP || RPM_DOWN): V1 := 0;
+			-> l1 on (!X_UP && !X_DOWN && !Y_UP && !Y_DOWN && V1 <= THRESHOLD && !RPM_UP && !RPM_DOWN);
+			-> l2 on (Y_DOWN && V1 > THRESHOLD);
+			-> violation on (V1 > THRESHOLD) recover Y_DOWN := 1;
+		}
+
+		l2 {
+			-> l2 on (Y_DOWN && !Y_MIN);
+			-> violation on (!Y_DOWN && !Y_MIN) recover Y_DOWN := 1;
+			-> l0 on (Y_MIN);
+		}
+
+	}
+}
+
+policy pr of pb_and_ps_and_pj_and_pr {
+	states {
+        
+		r0 {
+			-> r0 on ((RPM_UP && RPM_MAX));
+			-> r0 on ((!RPM_UP || RPM_DOWN));
+			-> violation on (RPM_UP && RPM_MAX) recover RPM_UP := 0;
+			-> violation on ((RPM_UP && RPM_DOWN)) recover RPM_UP := 0;
+		}
+
+	}
+}
