@@ -625,6 +625,8 @@ def main(dir, file):
         numberRowsExpected = numberRowsExpected * (len(policies[policy])) 
         recoveryKeyLength[policy] = len('{0:b}'.format(len(policies[policy])))
 
+    print("Expected Recovery Rows:", numberRowsExpected)
+
     rowsExample = []
     rowsExample.append(rowTemplate)
     for policy in policies:
@@ -648,12 +650,16 @@ def main(dir, file):
 
     # Now iterate through this list, pulling each set of acceptable from policies object
     rowNumber = 0
+    lastPrinted = 100
     for row in rowsExample:
         # print(row)
         totalRows = len(rowsExample)
         rowNumber += 1
-        if (rowNumber / totalRows * 100) % 5 == 0:
-            print(rowNumber / totalRows * 100, totalRows, rowNumber)
+        # print(rowNumber / totalRows * 100, totalRows, rowNumber)
+        if (int(rowNumber / totalRows * 100)) % 10 == 0:
+            if (lastPrinted != (int(rowNumber / totalRows * 100))):
+                print(int(rowNumber / totalRows * 100), "%\t", rowNumber, "of", totalRows)
+                lastPrinted = int(rowNumber / totalRows * 100)
         
         acceptableSets = []
         for policy in row:
@@ -672,6 +678,7 @@ def main(dir, file):
         # pprint.pprint(intersection)
         
         # NOTE: This will fail when intersection is empty set! 
+        # NOTE: The script currently ONLY supports CAPS LOCK inputs and outputs! A reason you may be here is because of that...!
         assert(len(intersection) > 0)
         # We are expecting this to occur for some examples, just need to handle it gracefully.
         # In some cases this assert will fail when the designer has created unenforceable policies
