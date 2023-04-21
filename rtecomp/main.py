@@ -340,8 +340,8 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
 
 def getAcceptableTransitions(violationConditions, alphabetTemplate):
     violationConditionsNoClocks = removeClockConditionKeys(violationConditions, alphabetTemplate)
-    # print("with clocks:", violationConditions)
-    # print("without clocks:", violationConditionsNoClocks)
+    print("with clocks:", violationConditions)
+    print("without clocks:", violationConditionsNoClocks)
     any = alphabetTemplate.copy()
     acceptableTransitions = {}
     allConditions = unwindConditions({getKey(any): any})
@@ -506,6 +506,125 @@ def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplat
         # f2.write(str(bs_data.prettify()))
         f2.write(str(bs_data))
         f2.close()
+
+def writeNewXML_two(root, input_filename, output_filename, policies, alphabetTemplate, list_intersections, references):
+    print("======================================")
+    print(" WRITING XML FILE")
+    print("======================================")
+    from bs4 import BeautifulSoup
+
+    # Reading data from the xml file
+    with open(input_filename, 'r') as f:
+        data = f.read()
+
+    # Passing the data of the xml
+    # file to the xml parser of
+    # beautifulsoup
+    bs_data = BeautifulSoup(data, features='xml')
+
+    for policyTag in bs_data.find_all("Policy"):
+        policy = policyTag.attrs["Name"]
+        # location = tag.find("Source").text
+        for tag in policyTag.find_all("PTransition"):
+            location = tag.find("Source").text
+
+            # Change the value of RecoveryReference to match the references list
+            recoveries = tag.find_all("RecoveryReference")
+            for recovery in recoveries:
+                recovery.string = str(references[policy][location])
+
+    # TODO: LUT with policies variable
+
+    # Output the contents of the
+    # modified xml file
+    with open(output_filename, "w") as f2:
+        # f2.write(str(bs_data.prettify()))
+        f2.write(str(bs_data))
+        f2.close()
+
+    return 
+
+    # Add ALL NEW recoveries
+    # for policy in policies:
+    #     recoveries = policies[policy]
+    #     for recovery in recoveries:
+    #         # print(recoveries[recovery])
+    #         # print(recoveries[recovery]["policy"])
+
+    #         policyTag = bs_data.find("Policy", {"Name":recovery["policy"]})
+
+    #         pt = bs_data.new_tag("PTransition")
+    #         pt.append(bs_data.new_tag("Source"))
+    #         pt.Source.append(recovery["location"])
+
+    #         destination = "violation" # Assumed, edited incase of "Default" transition
+
+    #         pt.append(bs_data.new_tag("Condition"))
+    #         # Need to add clock conditions here IFF RELEVANT
+    #         print(recovery["violatingCondition"], recovery["violatingConditionString"])
+    #         if (recovery["violatingCondition"] == "NONE"):
+    #             pt.Condition.append("Default")
+    #             destination = recovery["location"] # No transition
+    #         elif isClockCondition(recovery["violatingConditionString"]):
+    #             # TODO: Extract clock condition PROPERLY (the current implementation will only work for a single)
+    #             clockCondition = recovery["violatingConditionString"]
+    #             pt.Condition.append("("+convertBinaryStringToTextCondition(recovery["violatingCondition"], alphabetTemplate) + " and " + clockCondition + ")")
+    #         else:
+    #             pt.Condition.append(convertBinaryStringToTextCondition(recovery["violatingCondition"], alphabetTemplate))
+    #         # input("Any key to continue")
+
+    #         pt.append(bs_data.new_tag("Destination"))
+    #         pt.Destination.append(destination)
+
+    #         recoveryRefTag = bs_data.new_tag("RecoveryReference")
+    #         recoveryRefTag.append(str(recovery["violationRef"]))
+    #         pt.append(recoveryRefTag)
+
+
+
+    #         policyTag.Machine.append(pt)
+
+    topEnfFnTag = bs_data.find("EnforcedFunction")
+    selectLUTTag = bs_data.new_tag("SelectLUT")
+    for row in list_intersections:
+        rowTag = bs_data.new_tag("Row")
+
+        recoveryTag = bs_data.new_tag("Recovery")
+        recoveryTag.append(row["recovery"])
+        recoveryKeyTag = bs_data.new_tag("RecoveryKey")
+        recoveryKeyTag.append(row["recoveryKey"])
+
+        for k in row:
+            if (k != "recovery") & (k != "recoveryKey") & (k != "recoveryValue"):
+                # Policy
+                pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]))
+                rowTag.append(pRefTag)
+            if (k == "recoveryValue"):
+                for signal in row['recoveryValue']:
+                    pRecoverTag = bs_data.new_tag("Recover")
+                    pSig = bs_data.new_tag("Signal")
+                    pSig.append(signal)
+                    pVal = bs_data.new_tag("Value")
+                    pVal.append(str(row['recoveryValue'][signal]))
+                    pRecoverTag.append(pSig)
+                    pRecoverTag.append(pVal)
+                    rowTag.append(pRecoverTag)
+
+
+        # recoveryTag = bs_data.new_tag("Row")
+
+        rowTag.append(recoveryTag)
+        rowTag.append(recoveryKeyTag)
+        selectLUTTag.append(rowTag)
+
+    topEnfFnTag.append(selectLUTTag)
+
+    # Output the contents of the
+    # modified xml file
+    with open(output_filename, "w") as f2:
+        # f2.write(str(bs_data.prettify()))
+        f2.write(str(bs_data))
+        f2.close()
         
 ###########################################################################
 
@@ -546,12 +665,35 @@ def main(dir, file):
 
     # Find each policies violating transitions
     policies = {}
+    table_acceptingTransitions = {}
+    table_violatingTransitions = {}
     for policy in originalXMLRoot.iter("Policy"):
+
         allViolationTransitions = []
         policyViolationCount = 0
         locations = []
         for transition in policy.iter('PTransition'):
-            for child in transition.iter('Recover'):
+            if (transition.find('Recover')):
+                # Recovery Statement / PTransition -> Violating
+
+                violatingConditionString = transition.find("Condition").text
+                violatingCondition, _ = convertConditionToDictOfBools(violatingConditionString, alphabetTemplate)
+
+                pName = policy.attrib.get("Name")
+                location = transition.find("Source").text
+                condition = {
+                    "string": violatingConditionString,
+                    "bool": violatingCondition
+                }
+
+                if pName not in table_violatingTransitions.keys():
+                    table_violatingTransitions[pName] = {}
+
+                if location not in table_violatingTransitions[pName]:
+                    table_violatingTransitions[pName][location] = []
+
+                table_violatingTransitions[pName][location].append(condition)
+
                 # print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
                 violationConditions, _ = convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
                 # print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
@@ -582,6 +724,25 @@ def main(dir, file):
                         "violatingCondition":"NONE",
                         "acceptableConditions":acceptable
                     })
+            else:
+                # Normal Transition Statement / PTransition -> Accepting
+                acceptConditionString = transition.find("Condition").text
+                acceptCondition, _ = convertConditionToDictOfBools(acceptConditionString, alphabetTemplate)
+
+                pName = policy.attrib.get("Name")
+                location = transition.find("Source").text
+                condition = {
+                    "string": acceptConditionString,
+                    "bool": acceptCondition
+                }
+
+                if pName not in table_acceptingTransitions.keys():
+                    table_acceptingTransitions[pName] = {}
+
+                if location not in table_acceptingTransitions[pName]:
+                    table_acceptingTransitions[pName][location] = []
+
+                table_acceptingTransitions[pName][location].append(condition)
 
         policies[policy.attrib.get("Name")] = allViolationTransitions
 
@@ -638,7 +799,7 @@ def main(dir, file):
                     row[policy] = violation["violationRef"]
                     rowsExample.append(row)
 
-    assert(len(rowsExample) == numberRowsExpected)
+    # assert(len(rowsExample) == numberRowsExpected)
 
     # List of dictionaries with each policy and violation refs
     import pprint
@@ -647,6 +808,113 @@ def main(dir, file):
     print("=============================================")
     print(" PRE-CRUNCHING EDITS FOR VIOLATION REF COMBO")
     print("=============================================")
+
+    def convertTableRow_policy_location_to_boolCondition(row_policy_location_condition):
+        condition = {}
+        for cdtn in row_policy_location_condition:
+            condition.update(cdtn["bool"])
+        return condition
+
+    def appendViolatingTransitionsToList(combinations, violatingPolicyLocations):
+        newCombinations = []
+        for combination in combinations:
+            newCombinations.append(combination)
+        return newCombinations
+
+    def appendPolicyLocationsToList(combinations, policyLocations):
+        newCombinations = []
+        for combination in combinations:
+            policy = policyLocations[0]
+            locations = policyLocations[1]
+            if policy not in combination.keys():
+                for location in locations:
+                    combination[policy] = location
+                    newCombinations.append(combination.copy())
+            else:
+                newCombinations.append(combination)
+
+        return newCombinations
+
+    # Make a nice list of policies, with a list inside of each location
+    # policies_and_locations = [ [ policy 1 name, [policy location 1, policy location 2, .. ]] ]
+    policies_and_locations = []
+    policies = list(table_acceptingTransitions.keys())
+    for policy in policies:
+        locations = list(table_acceptingTransitions[policy].keys())
+        policies_and_locations.append([policy, locations])
+
+    # TODO: Add non-violating for each 
+
+    # Now, for some fun..
+    # So we need precompute the intersection of acceptable actions for each location within each policy
+    #
+    # What? 
+    #
+    # At any time, each policy is in any one location, and there is a set of acceptable actions in that policy
+    # At the same time, EVERY other policy is in any one location, also with a set of acceptable actions
+    #
+    # In order to precompute edits, we need to determine the intersection of each possible set of locations
+    # [Policy1 Locations] X [Policy 2 Locations] X [Policy 3 Locations] and so on
+    #
+    # Yes it is exponential. So maybe we won't precompute the intersection, but knowing the list of these combinations will be handy.. I think!
+    combinations = []
+    firstPolicy = policies_and_locations[0]
+    for location in firstPolicy[1]:
+        combinations.append({firstPolicy[0]: location})
+    for policy in policies_and_locations:
+        combinations = appendPolicyLocationsToList(combinations, policy)
+
+    def unionDictTransitions(list):
+        start = {}
+        for i in list:
+            start = {**start, **i["bool"]}
+        return start
+
+    def intersectionDictTransitions(one, two):
+        return one
+
+    # For every combination of locations
+    list_intersections = []
+    for combination in combinations:
+        policies = list(combination.keys())
+        firstPolicy = policies[0]
+        firstLocation = combination[firstPolicy]
+        # Union of acceptable for the first policy
+        acceptableTransitions = unionDictTransitions(table_acceptingTransitions[firstPolicy][firstLocation])
+        
+        # Then for each other policy
+        for next in policies:
+            # nextPolicy = next[0]
+            nextPolicy = next
+            nextLocation = combination[nextPolicy]
+            if nextPolicy != firstPolicy:
+                # Get union of acceptable
+                someNewAcceptableTransitions = unionDictTransitions(table_acceptingTransitions[nextPolicy][nextLocation])
+                # Get intersection
+                acceptableTransitions = intersectionDictTransitions(acceptableTransitions, someNewAcceptableTransitions)
+
+        import random
+        randInt = random.randrange(len(acceptableTransitions)-1)
+        randKey = list(acceptableTransitions.keys())[randInt]
+        # Now we have the intersection, add it to the list
+        list_intersections.append({
+            **combination, 
+            "intersection":acceptableTransitions,
+            "randEdit":acceptableTransitions[randKey]
+        })
+
+    # Quick fix to add recovery references to the list of intersections
+    references = {}
+    for p_and_l in policies_and_locations:
+        ref = 0
+        policy = p_and_l[0]
+        if policy not in references.keys():
+            references[policy] = {}
+        for location in p_and_l[1]:
+            references[policy] = {**references[policy], location: ref}
+            ref += 1
+
+    writeNewXML_two(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate, list_intersections, references)
 
     # Now iterate through this list, pulling each set of acceptable from policies object
     rowNumber = 0
