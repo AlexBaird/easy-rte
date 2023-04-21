@@ -534,82 +534,50 @@ def writeNewXML_two(root, input_filename, output_filename, policies, alphabetTem
                 recovery.string = str(references[policy][location])
 
     # TODO: LUT with policies variable
-
-    # Output the contents of the
-    # modified xml file
-    with open(output_filename, "w") as f2:
-        # f2.write(str(bs_data.prettify()))
-        f2.write(str(bs_data))
-        f2.close()
-
-    return 
-
-    # Add ALL NEW recoveries
-    # for policy in policies:
-    #     recoveries = policies[policy]
-    #     for recovery in recoveries:
-    #         # print(recoveries[recovery])
-    #         # print(recoveries[recovery]["policy"])
-
-    #         policyTag = bs_data.find("Policy", {"Name":recovery["policy"]})
-
-    #         pt = bs_data.new_tag("PTransition")
-    #         pt.append(bs_data.new_tag("Source"))
-    #         pt.Source.append(recovery["location"])
-
-    #         destination = "violation" # Assumed, edited incase of "Default" transition
-
-    #         pt.append(bs_data.new_tag("Condition"))
-    #         # Need to add clock conditions here IFF RELEVANT
-    #         print(recovery["violatingCondition"], recovery["violatingConditionString"])
-    #         if (recovery["violatingCondition"] == "NONE"):
-    #             pt.Condition.append("Default")
-    #             destination = recovery["location"] # No transition
-    #         elif isClockCondition(recovery["violatingConditionString"]):
-    #             # TODO: Extract clock condition PROPERLY (the current implementation will only work for a single)
-    #             clockCondition = recovery["violatingConditionString"]
-    #             pt.Condition.append("("+convertBinaryStringToTextCondition(recovery["violatingCondition"], alphabetTemplate) + " and " + clockCondition + ")")
-    #         else:
-    #             pt.Condition.append(convertBinaryStringToTextCondition(recovery["violatingCondition"], alphabetTemplate))
-    #         # input("Any key to continue")
-
-    #         pt.append(bs_data.new_tag("Destination"))
-    #         pt.Destination.append(destination)
-
-    #         recoveryRefTag = bs_data.new_tag("RecoveryReference")
-    #         recoveryRefTag.append(str(recovery["violationRef"]))
-    #         pt.append(recoveryRefTag)
-
-
-
-    #         policyTag.Machine.append(pt)
-
     topEnfFnTag = bs_data.find("EnforcedFunction")
     selectLUTTag = bs_data.new_tag("SelectLUT")
     for row in list_intersections:
         rowTag = bs_data.new_tag("Row")
 
         recoveryTag = bs_data.new_tag("Recovery")
-        recoveryTag.append(row["recovery"])
+        recoveryTag.append(row["randEdit"]["key"])
         recoveryKeyTag = bs_data.new_tag("RecoveryKey")
-        recoveryKeyTag.append(row["recoveryKey"])
+        # recoveryKeyTag.append(row["recoveryKey"])
+        recoveryKeyTag.append("TODO")
 
-        for k in row:
-            if (k != "recovery") & (k != "recoveryKey") & (k != "recoveryValue"):
-                # Policy
-                pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]))
-                rowTag.append(pRefTag)
-            if (k == "recoveryValue"):
-                for signal in row['recoveryValue']:
-                    pRecoverTag = bs_data.new_tag("Recover")
-                    pSig = bs_data.new_tag("Signal")
-                    pSig.append(signal)
-                    pVal = bs_data.new_tag("Value")
-                    pVal.append(str(row['recoveryValue'][signal]))
-                    pRecoverTag.append(pSig)
-                    pRecoverTag.append(pVal)
-                    rowTag.append(pRecoverTag)
+        for policy in policies:
+            pRefTag = bs_data.new_tag("PolicyRef", Policy=str(policy), RecoveryReference=str(row[policy]))
+            rowTag.append(pRefTag)
 
+        for signal in row["randEdit"]["signals"].keys():
+            sigName = str(signal)
+            sigValue = str(row["randEdit"]["signals"][sigName])
+
+
+            pRecoverTag = bs_data.new_tag("Recover")
+            pSig = bs_data.new_tag("Signal")
+            pSig.append(sigName)
+            pVal = bs_data.new_tag("Value")
+            pVal.append(sigValue)
+            pRecoverTag.append(pSig)
+            pRecoverTag.append(pVal)
+            rowTag.append(pRecoverTag)
+
+        # for k in row:
+        #     if (k != "recovery") & (k != "recoveryKey") & (k != "recoveryValue"):
+        #         # Policy
+        #         pRefTag = bs_data.new_tag("PolicyRef", Policy=str(k), RecoveryReference=str(row[k]))
+        #         rowTag.append(pRefTag)
+        #     if (k == "recoveryValue"):
+        #         for signal in row['recoveryValue']:
+        #             pRecoverTag = bs_data.new_tag("Recover")
+        #             pSig = bs_data.new_tag("Signal")
+        #             pSig.append(signal)
+        #             pVal = bs_data.new_tag("Value")
+        #             pVal.append(str(row['recoveryValue'][signal]))
+        #             pRecoverTag.append(pSig)
+        #             pRecoverTag.append(pVal)
+        #             rowTag.append(pRecoverTag)
 
         # recoveryTag = bs_data.new_tag("Row")
 
@@ -900,7 +868,7 @@ def main(dir, file):
         list_intersections.append({
             **combination, 
             "intersection":acceptableTransitions,
-            "randEdit":acceptableTransitions[randKey]
+            "randEdit":{"key":randKey, "signals":acceptableTransitions[randKey]}
         })
 
     # Quick fix to add recovery references to the list of intersections
@@ -914,7 +882,19 @@ def main(dir, file):
             references[policy] = {**references[policy], location: ref}
             ref += 1
 
+    # TODO: Get binary recoveryKeys
+    # recoveryKey = ""
+    # for policy in list_intersections:
+    #     b = '{0:b}'.format(row[policy])
+    #     # Pad with 0s as required to meet length
+    #     toPad = recoveryKeyLength[policy] - len(b)
+    #     b = "0" * toPad + b
+    #     recoveryKey += b
+    # row["recoveryKey"] = recoveryKey 
+
     writeNewXML_two(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate, list_intersections, references)
+
+    return 
 
     # Now iterate through this list, pulling each set of acceptable from policies object
     rowNumber = 0
