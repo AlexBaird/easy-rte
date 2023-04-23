@@ -507,7 +507,7 @@ def writeNewXML(root, input_filename, output_filename, policies, alphabetTemplat
         f2.write(str(bs_data))
         f2.close()
 
-def writeNewXML_two(root, input_filename, output_filename, policies, alphabetTemplate, list_intersections, references):
+def writeNewXML_two(root, input_filename, output_filename, policies, alphabetTemplate, list_intersections, references, individualRecoveryKeys):
     print("======================================")
     print(" WRITING XML FILE")
     print("======================================")
@@ -532,6 +532,7 @@ def writeNewXML_two(root, input_filename, output_filename, policies, alphabetTem
             recoveries = tag.find_all("RecoveryReference")
             for recovery in recoveries:
                 recovery.string = str(references[policy][location])
+                # NOTE: Could add something here to add in individualRecoveryKeys[policy][location] to the xml for easier compiling 
 
     # TODO: LUT with policies variable
     topEnfFnTag = bs_data.find("EnforcedFunction")
@@ -543,10 +544,10 @@ def writeNewXML_two(root, input_filename, output_filename, policies, alphabetTem
         recoveryTag.append(row["randEdit"]["key"])
         recoveryKeyTag = bs_data.new_tag("RecoveryKey")
         # recoveryKeyTag.append(row["recoveryKey"])
-        recoveryKeyTag.append("TODO")
+        recoveryKeyTag.append(row["recoveryKey"])
 
         for policy in policies:
-            pRefTag = bs_data.new_tag("PolicyRef", Policy=str(policy), RecoveryReference=str(row[policy]))
+            pRefTag = bs_data.new_tag("PolicyRef", Policy=str(policy), RecoveryReference=str(references[policy][row[policy]]), RecoveryReferenceKey=str(individualRecoveryKeys[policy][row[policy]]))
             rowTag.append(pRefTag)
 
         for signal in row["randEdit"]["signals"].keys():
@@ -748,11 +749,11 @@ def main(dir, file):
         rowTemplate[policy] = 1 
 
     numberRowsExpected = 1
-    recoveryKeyLength = {}
+    # recoveryKeyLength = {} NOTE: Determined later 
     for policy in policies:
         # numberLocations = getNumberLocations(policies[policy])
         numberRowsExpected = numberRowsExpected * (len(policies[policy])) 
-        recoveryKeyLength[policy] = len('{0:b}'.format(len(policies[policy])))
+        # recoveryKeyLength[policy] = len('{0:b}'.format(len(policies[policy])))  NOTE: Determined later 
 
     print("Expected Recovery Rows:", numberRowsExpected)
 
@@ -873,6 +874,7 @@ def main(dir, file):
 
     # Quick fix to add recovery references to the list of intersections
     references = {}
+    recoveryKeyLength = {}
     for p_and_l in policies_and_locations:
         ref = 0
         policy = p_and_l[0]
@@ -881,18 +883,30 @@ def main(dir, file):
         for location in p_and_l[1]:
             references[policy] = {**references[policy], location: ref}
             ref += 1
+        recoveryKeyLength[policy] = len('{0:b}'.format(ref))
 
-    # TODO: Get binary recoveryKeys
-    # recoveryKey = ""
-    # for policy in list_intersections:
-    #     b = '{0:b}'.format(row[policy])
-    #     # Pad with 0s as required to meet length
-    #     toPad = recoveryKeyLength[policy] - len(b)
-    #     b = "0" * toPad + b
-    #     recoveryKey += b
-    # row["recoveryKey"] = recoveryKey 
+    # Get binary recoveryKeys
+    # Stored in the "list_intersections" list1 under key "recoveryKey" for each row
+    individualRecoveryKeys = {} # This one holds individual keys, this might be helpful on the compiler side
+    for intersection in list_intersections:
+        recoveryKey = ""
+        for policy in policies:
+            b = '{0:b}'.format(references[policy][intersection[policy]])
+            # Pad with 0s as required to meet length
+            toPad = recoveryKeyLength[policy] - len(b)
+            b = "0" * toPad + b
+            recoveryKey += b
 
-    writeNewXML_two(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate, list_intersections, references)
+            if policy not in individualRecoveryKeys.keys():
+                individualRecoveryKeys[policy] = {}
+            if intersection[policy] not in individualRecoveryKeys[policy].keys():
+                individualRecoveryKeys[policy][intersection[policy]] = {}
+            individualRecoveryKeys[policy][intersection[policy]] = b
+            # individualRecoveryKeys[policy][intersection[policy]]["binary"] = "TODO"
+
+        intersection["recoveryKey"]= recoveryKey 
+
+    writeNewXML_two(originalXMLRoot, input_filename, output_filename, policies, alphabetTemplate, list_intersections, references, individualRecoveryKeys)
 
     return 
 
