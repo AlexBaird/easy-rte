@@ -98,7 +98,7 @@ run .5ns
 
 force -freeze sim:/parallel_F_ab5/A_ptc 1 0
 run .2ns
-#force -freeze sim:/parallel_F_ab5/A_ptc 0 0
+force -freeze sim:/parallel_F_ab5/A_ptc 0 0
 run 3ns
 
 # ModelSim Compiled AB Example

@@ -17,7 +17,7 @@
 		input wire [1:0] ab5_policy_AB5_state_in,
 		
 		// Recovery Reference
-		output wire [2:0] ab5_policy_AB5_input_recovery_ref,
+		output wire [1:0] ab5_policy_AB5_input_recovery_ref,
 
 		input wire clk
 		);
@@ -33,13 +33,13 @@
 		reg A = 0;
 		
 		// Recovery ref declare and init
-		reg [2:0] recoveryReference = 0;
+		reg [1:0] recoveryReference = 0;
 
 		initial begin
 			recoveryReference = 0;
 		end
 
-		always @(A_ptc_in, clk, ab5_policy_AB5_state_in) begin
+		always @(ab5_policy_AB5_state_in, A_ptc_in, clk) begin
 			
 			// Default no change to inputs (transparency) 
 			A = A_ptc_in;
@@ -57,60 +57,61 @@
 					end
 					POLICY_STATE_ab5_AB5_s0: begin
 						// Default location recovery reference
-						recoveryReference = 3;
 						
-						if (!(A)) begin
-							//transition s0 -> violation on not (A)
+						
+						if (!(A) || A) begin
+							//transition s0 -> violation on not (A) or A
 							//select a transition to solve the problem
 							
-							//Selected non-violation transition "s0 -> s0 on not (A)" which has an equivalent guard, so no action is required
+							//Recovery instructions manually provided.
 							
 							// Set recovery reference
 							recoveryReference = 1;
 						end
-						if (A) begin
-							//transition s0 -> violation on A
+					end
+					POLICY_STATE_ab5_AB5_s1: begin
+						// Default location recovery reference
+						
+						
+						if (!(A) && v >= 5) begin
+							//transition s1 -> violation on not (A) and v >= 5
 							//select a transition to solve the problem
 							
-							//Selected non-violation transition "s0 -> s1 on A" which has an equivalent guard, so no action is required
+							//Selected non-violation transition "s1 -> s0 on not (A)" and action is required
+							A = 0;
 							
 							// Set recovery reference
 							recoveryReference = 2;
 						end
-					end
-					POLICY_STATE_ab5_AB5_s1: begin
-						// Default location recovery reference
-						recoveryReference = 5;
-						
-						if (A && (A && v >= 5)) begin
-							//transition s1 -> violation on A and A and v >= 5
+						if (A && v >= 5) begin
+							//transition s1 -> violation on A and v >= 5
 							//select a transition to solve the problem
 							
 							//Selected non-violation transition "s1 -> s0 on not (A)" and action is required
 							A = 0;
 							
 							// Set recovery reference
-							recoveryReference = 4;
+							recoveryReference = 2;
 						end
-						if (A) begin
-							//transition s1 -> violation on A
+						if (A && v >= 5) begin
+							//transition s1 -> violation on A and v >= 5
 							//select a transition to solve the problem
 							
-							//Selected non-violation transition "s1 -> s0 on not (A)" and action is required
+							//Recovery instructions manually provided.
 							A = 0;
 							
 							// Set recovery reference
-							recoveryReference = 6;
+							recoveryReference = 2;
 						end
-						if (A) begin
-							//transition s1 -> violation on A
+						if (A || A) begin
+							//transition s1 -> violation on A or A
 							//select a transition to solve the problem
 							
-							//Selected non-violation transition "s1 -> s0 on not (A)" and action is required
+							//Recovery instructions manually provided.
 							A = 0;
 							
 							// Set recovery reference
-							recoveryReference = 7;
+							recoveryReference = 2;
 						end
 					end
 					
@@ -130,7 +131,7 @@
 
 		//outputs (controller to plant)
 		input wire  B_ctp_in,
-		//output reg  B_ctp_out,
+		//output wire  B_ctp_out,
 		
 
 		// Internal Variables Input
@@ -140,7 +141,7 @@
 		input wire [1:0] ab5_policy_AB5_state_in,
 
 		// Recovery Reference Output
-		output wire [2:0] ab5_policy_AB5_output_recovery_ref,
+		output wire [1:0] ab5_policy_AB5_output_recovery_ref,
 
 		input wire clk
 
@@ -159,13 +160,13 @@
 		reg B = 0;
 		
 		// Recovery ref declare and init
-		reg [2:0] recoveryReference = 0;
+		reg [1:0] recoveryReference = 0;
 
 		initial begin
 			recoveryReference = 0;
 		end
 
-		always @(B_ctp_in, clk, ab5_policy_AB5_state_in) begin
+		always @(ab5_policy_AB5_state_in, B_ctp_in, clk) begin
 			// Default no change to inputs/outputs (transparency) 
 			A = A_ptc_out;
 			
@@ -184,66 +185,64 @@
 					end
 					POLICY_STATE_ab5_AB5_s0: begin
 						// Default location recovery reference
-						recoveryReference = 3;
 						
-						if (!(A) && B) begin
-							//transition s0 -> violation on (!A and B)
+						
+						if ((!(A) && B) || (A && B)) begin
+							//transition s0 -> violation on ( ( !A and B ) or ( A and B ) )
 							//select a transition to solve the problem
 							
-							//Selected non-violation transition "s0 -> s0 on ( !A and !B )" and action is required
+							//Recovery instructions manually provided.
 							B = 0;
 							
 							// Set recovery reference
 							recoveryReference = 1;
 
 						end 
-						if (A && B) begin
-							//transition s0 -> violation on (A and B)
+					end
+					POLICY_STATE_ab5_AB5_s1: begin
+						// Default location recovery reference
+						
+						
+						if ((!(A) && !(B)) && v >= 5) begin
+							//transition s1 -> violation on ( ( !A and !B ) and ( v >= 5 ) )
 							//select a transition to solve the problem
 							
-							//Selected non-violation transition "s0 -> s0 on ( !A and !B )" and action is required
-							B = 0;
+							//Selected non-violation transition "s1 -> s0 on ( !A and B )" and action is required
+							B = 1;
 							
 							// Set recovery reference
 							recoveryReference = 2;
 
 						end 
-					end
-					POLICY_STATE_ab5_AB5_s1: begin
-						// Default location recovery reference
-						recoveryReference = 5;
-						
-						if ((A && B) && ((A && B) && v >= 5)) begin
-							//transition s1 -> violation on ((A and B) and ( ( A and B ) and ( v >= 5 ) ))
+						if ((A && !(B)) && v >= 5) begin
+							//transition s1 -> violation on ( ( A and !B ) and ( v >= 5 ) )
 							//select a transition to solve the problem
 							
 							//Selected non-violation transition "s1 -> s0 on ( !A and B )" and action is required
 							B = 1;
 							
 							// Set recovery reference
-							recoveryReference = 4;
+							recoveryReference = 2;
 
 						end 
-						if (A && B) begin
-							//transition s1 -> violation on (A and B)
+						if ((A && B) && v >= 5) begin
+							//transition s1 -> violation on ( ( A and B ) and ( v >= 5 ) )
 							//select a transition to solve the problem
 							
-							//Selected non-violation transition "s1 -> s0 on ( !A and B )" and action is required
-							B = 1;
+							//Recovery instructions manually provided.
 							
 							// Set recovery reference
-							recoveryReference = 6;
+							recoveryReference = 2;
 
 						end 
-						if (A && !(B)) begin
-							//transition s1 -> violation on (A and !B)
+						if ((A && B) || (A && !(B))) begin
+							//transition s1 -> violation on ( ( A and B ) or ( A and !B ) )
 							//select a transition to solve the problem
 							
-							//Selected non-violation transition "s1 -> s0 on ( !A and B )" and action is required
-							B = 1;
+							//Recovery instructions manually provided.
 							
 							// Set recovery reference
-							recoveryReference = 7;
+							recoveryReference = 2;
 
 						end 
 					end
@@ -372,21 +371,13 @@
 						reset_v = 1;
 						//transTaken_ab5_policy_AB5 = 1;
 					end  
-					else if (!(A) && B) begin
-						//transition s0 -> violation on (!A and B)
+					else if ((!(A) && B) || (A && B)) begin
+						//transition s0 -> violation on ( ( !A and B ) or ( A and B ) )
 						ab5_policy_AB5_n_state = POLICY_STATE_ab5_AB5_violation;
 						//set expressions
 						
 						//transTaken_ab5_policy_AB5 = 1;
-					end  
-					else if (A && B) begin
-						//transition s0 -> violation on (A and B)
-						ab5_policy_AB5_n_state = POLICY_STATE_ab5_AB5_violation;
-						//set expressions
-						
-						//transTaken_ab5_policy_AB5 = 1;
-					end  
-					  else begin
+					end   else begin
 						//only possible in a violation
 						ab5_policy_AB5_n_state = POLICY_STATE_ab5_AB5_violation;
 						//transTaken_ab5_policy_AB5 = 1;
@@ -395,7 +386,7 @@
 				POLICY_STATE_ab5_AB5_s1: begin
 					
 					 if ((!(A) && !(B)) && v < 5) begin
-						//transition s1 -> s1 on ( ( !A and !B ) and v < 5 )
+						//transition s1 -> s1 on ( ( !A and !B ) and ( v < 5 ) )
 						ab5_policy_AB5_n_state = POLICY_STATE_ab5_AB5_s1;
 						//set expressions
 						
@@ -408,23 +399,29 @@
 						
 						//transTaken_ab5_policy_AB5 = 1;
 					end  
-					else if ((A && B) && ((A && B) && v >= 5)) begin
-						//transition s1 -> violation on ((A and B) and ( ( A and B ) and ( v >= 5 ) ))
+					else if ((!(A) && !(B)) && v >= 5) begin
+						//transition s1 -> violation on ( ( !A and !B ) and ( v >= 5 ) )
 						ab5_policy_AB5_n_state = POLICY_STATE_ab5_AB5_violation;
 						//set expressions
 						
 						//transTaken_ab5_policy_AB5 = 1;
 					end  
-					 
-					else if (A && B) begin
-						//transition s1 -> violation on (A and B)
+					else if ((A && !(B)) && v >= 5) begin
+						//transition s1 -> violation on ( ( A and !B ) and ( v >= 5 ) )
 						ab5_policy_AB5_n_state = POLICY_STATE_ab5_AB5_violation;
 						//set expressions
 						
 						//transTaken_ab5_policy_AB5 = 1;
 					end  
-					else if (A && !(B)) begin
-						//transition s1 -> violation on (A and !B)
+					else if ((A && B) && v >= 5) begin
+						//transition s1 -> violation on ( ( A and B ) and ( v >= 5 ) )
+						ab5_policy_AB5_n_state = POLICY_STATE_ab5_AB5_violation;
+						//set expressions
+						
+						//transTaken_ab5_policy_AB5 = 1;
+					end  
+					else if ((A && B) || (A && !(B))) begin
+						//transition s1 -> violation on ( ( A and B ) or ( A and !B ) )
 						ab5_policy_AB5_n_state = POLICY_STATE_ab5_AB5_violation;
 						//set expressions
 						
@@ -456,50 +453,21 @@
 
 	
 
+// NOTE: Input Select LUT uses Output LUT :)
 // INPUT Select Look Up Table
 // Inputs: recovery references from each policy's input module
 // Outputs: final signals for inputs
-module F_LUT_Input_Edit (
+//module F_LUT_Input_Edit (
 		// Inputs (plant to controller) 
-		input wire A_ptc_in,
-		output reg A_ptc_out, // final
+		//input wire A_ptc_in,
+		//output wire A_ptc_out, // final
 		
-		input reg [2:0] ab5_policy_AB5_input_recovery_ref,
+		//input wire [1:0] ab5_policy_AB5_input_recovery_ref,
 		
-		input wire clk
-	);
-
-	// TODO: LUT
+		//input wire clk
+	//);
 	
-endmodule
-
-module F_input_latch (
-		input wire A_ptc_in,
-		output wire A_ptc_out,
-		output wire A_ptc_out_latched,
-		input wire clk_input,
-		input wire clk_transition
-	);
-
-	reg A_temp = 0;
-	reg A_latch = 0;
-
-	always @(A_ptc_in, clk_transition, clk_input) begin
-		if (clk_input == 1) begin
-			A_latch = A_ptc_in;
-		end
-		if (clk_input == 0) begin
-			A_temp = 0;
-		end
-		else begin
-			A_temp = A_ptc_in;			
-		end
-	end
-
-	assign A_ptc_out = A_temp;
-	assign A_ptc_out_latched = A_latch;
-
-endmodule
+//endmodule
 	
 // OUTPUT Select Look Up Table
 // Inputs: recovery references from each policy's output module
@@ -507,55 +475,40 @@ endmodule
 module F_LUT_Output_Edit (
 		// Inputs (plant to controller) 
 		input wire A_ptc_in,
-		output reg A_ptc_out, // final
+		output wire A_ptc_out, // final
 		
 
 		// Outputs (controller to plant) 
 		input wire B_ctp_in,
-		output reg B_ctp_out, // final
+		output wire B_ctp_out, // final
 		
-		input reg [2:0] ab5_policy_AB5_output_recovery_ref,
+		input wire [1:0] ab5_policy_AB5_output_recovery_ref,
 		
 		input wire clk
 	);
 
 	reg A = 0;
 	reg B = 0;
-	initial begin
-		A_ptc_out = 0;
-		B_ctp_out = 0;
-	end
+	
+	//initial begin
+		// A_ptc_out = 0;
+		// B_ctp_out = 0;
+	//end
 
-	// TODO: LUT
+	// LUT
 	always @(posedge clk) begin
 		case({ ab5_policy_AB5_output_recovery_ref }) 
-			3'b001: begin
+			2'b00: begin
 				A = 1;
-				B = 0;
-				end
-			3'b010: begin
-				A = 1;
-				B = 0;
-				end
-			3'b011: begin
-				A = 1;
-				B = 0;
-				end
-			3'b100: begin
-				A = 1;
-				B = 0;
-				end
-			3'b101: begin
-				A = 1;
-				B = 0;
-				end
-			3'b110: begin
-				A = 0;
 				B = 1;
 				end
-			3'b111: begin
+			2'b01: begin
 				A = 0;
-				B = 1;
+				B = 0;
+				end
+			2'b10: begin
+				A = 0;
+				B = 0;
 				end
 
 			default: begin 
@@ -564,20 +517,25 @@ module F_LUT_Output_Edit (
 				end
 		endcase
 		
-		A_ptc_out = A;
-		B_ctp_out = B;
+		//A_ptc_out = A;
+		//B_ctp_out = B;
+
 	end
-
-
+	
+	assign A_ptc_out = A;
+	assign B_ctp_out = B;
+	
 endmodule
 
 module parallel_sim_FSM (
 	input wire A_ptc_enf,
 	output wire A_ptc_enf_out,
 	output wire A_ptc_enf_trans,
+	
 	input wire B_ctp_enf,
 	output wire B_ctp_enf_out,
 	output wire B_ctp_enf_trans,
+	
 	input wire clk,
 	output wire clk_input,
 	output wire clk_output,
@@ -589,17 +547,18 @@ module parallel_sim_FSM (
 	reg c_in = 0;
 	reg c_out = 0;
 	reg c_trans = 0;
+	
 	reg A_enf = 0;
-	reg B_enf = 0;
-
 	reg A_trans = 0;
+	
+	reg B_enf = 0;
 	reg B_trans = 0;
-
+	
 	always @(posedge clk)
 	begin
 		A_enf = 0;
 		B_enf = 0;
-
+		
 		c_in = 0;
 		c_out = 0;
 		c_trans = 0;
@@ -612,40 +571,37 @@ module parallel_sim_FSM (
 		end
 
 		case (c_state)
-			3'b001: begin
-				// Input
-				c_in = 1;
-			end
-			3'b010: begin
-				// Express Input 
-				A_enf = A_ptc_enf;
-				A_trans = A_ptc_enf;
-				// Controller
-			end
-			3'b011: begin
-				// Output
-				c_out = 1;
-			end
-			3'b100: begin
-				// Express Output
-				B_enf = B_ctp_enf;
-				B_trans = B_ctp_enf;
-			end
-			3'b101: begin
-				// Transition
-
-				// TODO: New signals here from A and B to pass to transition module
-
-				c_trans = 1;
-			end
-		endcase
+		3'b001: begin
+			// Input
+			c_in = 1;
+		end
+		3'b010: begin
+			// Express Input 
+			A_enf = A_ptc_enf;
+			A_trans = A_ptc_enf;
+			// Controller
+		end
+		3'b011: begin
+			// Output
+			c_out = 1;
+		end
+		3'b100: begin
+			// Express Output
+			B_enf = B_ctp_enf;
+			B_trans = B_ctp_enf;
+		end
+		3'b101: begin
+			// Transition
+			c_trans = 1;
+		end
+	endcase
 
 	end
-
+	
 	assign A_ptc_enf_out = A_enf;
-	assign B_ctp_enf_out = B_enf;
-
 	assign A_ptc_enf_trans = A_trans;
+	
+	assign B_ctp_enf_out = B_enf;
 	assign B_ctp_enf_trans = B_trans;
 
 	assign state_out = c_state;
@@ -655,14 +611,12 @@ module parallel_sim_FSM (
 
 endmodule
 
-
 module parallel_F_ab5(
 
 		//inputs (plant to controller)
 		A_ptc,
 		A_ptc_out,
 		A_ptc_out_ignore,
-		A_ptc_out_temp,
 		A_ptc_out_latched,
 		A_ptc_out_trans,
 		//OUTPUT_A_ptc_enf_final,
@@ -696,10 +650,9 @@ module parallel_F_ab5(
 	output wire clk_output;
 	output wire clk_transition;
 	output wire [2:0] fsm_state;
-
+	
 	input wire A_ptc;
 	output wire A_ptc_out;
-	output wire A_ptc_out_temp;
 	output wire A_ptc_out_latched;
 	output wire A_ptc_out_ignore;
 	output wire A_ptc_out_trans;
@@ -717,23 +670,25 @@ module parallel_F_ab5(
 	wire [1:0] ab5_policy_AB5_state;
 
 	// Recovery References
-	output wire [2:0] ab5_policy_AB5_input_recovery_ref;
-	output wire [2:0] ab5_policy_AB5_output_recovery_ref;
+	output wire [1:0] ab5_policy_AB5_input_recovery_ref;
+	output wire [1:0] ab5_policy_AB5_output_recovery_ref;
 	
 	parallel_sim_FSM instance_parallel_sim_FSM(
 		.A_ptc_enf(A_ptc_out),
 		.A_ptc_enf_out(A_ptc_out_latched),
 		.A_ptc_enf_trans(A_ptc_out_trans),
+		
 		.B_ctp_enf(B_ctp_out),
 		.B_ctp_enf_out(B_ctp_out_latched),
 		.B_ctp_enf_trans(B_ctp_out_trans),
+		
 		.clk(clk),
 		.clk_input(clk_input),
 		.clk_output(clk_output),
 		.clk_transition(clk_transition),
 		.state_out(fsm_state)
 	);
-
+	
 	F_combinatorialVerilog_ab5_policy_AB5_input instance_policy_AB5_input(
 		.ab5_policy_AB5_state_in(ab5_policy_AB5_state),
 		.ab5_policy_AB5_input_recovery_ref(ab5_policy_AB5_input_recovery_ref),
@@ -743,7 +698,7 @@ module parallel_F_ab5(
 		.v(v),
 		.clk(clk_input)
 	);
-
+	
 	F_LUT_Output_Edit instance_LUT_Input_Edit(
 		
 		.A_ptc_in(A_ptc),
@@ -756,7 +711,7 @@ module parallel_F_ab5(
 		
 		.clk(clk_input)
 	);
-
+	
 	F_combinatorialVerilog_ab5_policy_AB5_output instance_policy_AB5_output(
 		
 		.A_ptc_out(A_ptc_out_trans),
@@ -771,7 +726,7 @@ module parallel_F_ab5(
 		.v(v),
 		.clk(clk_output)
 	);
-
+	
 	F_LUT_Output_Edit instance_LUT_Output_Edit(
 		
 		.A_ptc_in(A_ptc_out_latched),
@@ -784,7 +739,7 @@ module parallel_F_ab5(
 		
 		.clk(clk_output)
 	);
-
+	
 	F_combinatorialVerilog_ab5_policy_AB5_transition instance_policy_AB5_transition(
 		
 		.A_ptc_final(A_ptc_out_trans),
@@ -797,7 +752,7 @@ module parallel_F_ab5(
 		.ab5_policy_AB5_state_out(ab5_policy_AB5_state),
 		.clk(clk_transition)
 	);
-
 	
+
 endmodule
 
