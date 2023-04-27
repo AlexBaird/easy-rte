@@ -124,10 +124,10 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
     conditions = {}
     clkConditions = {}
     a = parse("{}and{}", conditionStr.lower())
-    # print("Did I find and?", a)
+    print("Did I find and?", a)
     if a is not None:
         # AND - we can parse at this level for a single condition
-        # print(a[0], "AND", a[1])
+        print(a[0], "AND", a[1])
         LHS = parse_singleSignal(a[0])
         RHS = parse_singleSignal(a[1])
         condition = alphabetTemplate.copy()
@@ -140,7 +140,7 @@ def parse_noBracketsCondition(conditionStr, alphabetTemplate):
         else:
             condition[RHS["signal"]] = RHS["value"]
 
-        # print(conditionStr, "becomes", condition)
+        print(conditionStr, "becomes", condition)
         conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
 
     else:
@@ -231,6 +231,7 @@ def removeClockConditions(conditions, alphabetTemplate):
     return withoutClockConditions
 
 def removeClockConditionKeys(conditions, alphabetTemplate):
+    assert(False)
     withoutClockConditions = {}
     for condition in conditions:
         # print('hi2', condition, conditions)#[condition], len(alphabetTemplate))
@@ -243,10 +244,29 @@ def removeClockConditionKeys(conditions, alphabetTemplate):
     return withoutClockConditions
 
 def stripClockConditionsFromKey(key, alphabetKeyLength):
-    print("alphabetKeyLength:", alphabetKeyLength, "long, Key is", len(key), "long")
+    # print("alphabetKeyLength:", alphabetKeyLength, "long, Key is", len(key), "long")
     return key[0:alphabetKeyLength]
 
 def convertConditionToDictOfBools(conditionString, alphabetTemplate):
+    import stringConditionParser
+
+    listOfConditions = stringConditionParser.parseConditionString(conditionString, alphabetTemplate)
+
+    dictOfConditionSets = {}
+    for conditionSet in listOfConditions:
+        label = ""
+        for key in alphabetTemplate.keys():
+            if conditionSet[key] == True:
+                label += "1"
+            else:
+                label += "0"
+
+        dictOfConditionSets[label] = conditionSet
+
+    # dictOfConditionSets = unwindConditions(dictOfConditionSets)
+
+    return [dictOfConditionSets, None]
+
     # print(alphabetTemplate)
     print(conditionString)
 
@@ -294,6 +314,10 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
         topCondition = parse(formatString, b[0])
 
         # print(topCondition)
+        # assert (topCondition is not None)
+        if (topCondition is None):
+            print("You need to do something Mr Alex")
+
         
         # TODO: Recursively find all transitions - keep going till you have ONLY ANDS in a list/table
 
@@ -339,9 +363,9 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
     return topCondition, clk
 
 def getAcceptableTransitions(violationConditions, alphabetTemplate):
-    violationConditionsNoClocks = removeClockConditionKeys(violationConditions, alphabetTemplate)
-    print("with clocks:", violationConditions)
-    print("without clocks:", violationConditionsNoClocks)
+    violationConditionsNoClocks = violationConditions #removeClockConditionKeys(violationConditions, alphabetTemplate)
+    # print("with clocks:", violationConditions)
+    # print("without clocks:", violationConditionsNoClocks)
     any = alphabetTemplate.copy()
     acceptableTransitions = {}
     allConditions = unwindConditions({getKey(any): any})
@@ -352,8 +376,8 @@ def getAcceptableTransitions(violationConditions, alphabetTemplate):
             acceptableTransitions[condition] = allConditions[condition]
 
     # print("Acceptable Transitions (", len(acceptableTransitions), ") -", acceptableTransitions)
-    print("Acceptable Transitions (", len(acceptableTransitions), ")")
-    print("Violating Transitions (", len(violationConditions), ")")
+    # print("Acceptable Transitions (", len(acceptableTransitions), ")")
+    # print("Violating Transitions (", len(violationConditions), ")")
     # print("Violating Transitions (", len(violationConditions), ") -", violationConditions)
     assert(len(acceptableTransitions) + len(violationConditions) == len(allConditions))
     return acceptableTransitions
@@ -806,6 +830,7 @@ def main(dir, file):
 
     # Make a nice list of policies, with a list inside of each location
     # policies_and_locations = [ [ policy 1 name, [policy location 1, policy location 2, .. ]] ]
+    print(" - Getting acceptable actions")
     policies_and_locations = []
     policies = list(table_acceptingTransitions.keys())
     for policy in policies:
@@ -842,6 +867,7 @@ def main(dir, file):
     def intersectionDictTransitions(one, two):
         return one
 
+    print(" - Getting intersection of acceptable actions")
     # For every combination of locations
     list_intersections = []
     for combination in combinations:
@@ -873,6 +899,7 @@ def main(dir, file):
         })
 
     # Quick fix to add recovery references to the list of intersections
+    print(" - Add recovery references to the list of intersections")
     references = {}
     recoveryKeyLength = {}
     for p_and_l in policies_and_locations:
@@ -887,6 +914,7 @@ def main(dir, file):
 
     # Get binary recoveryKeys
     # Stored in the "list_intersections" list1 under key "recoveryKey" for each row
+    print(" - Add binary recovery keys")
     individualRecoveryKeys = {} # This one holds individual keys, this might be helpful on the compiler side
     for intersection in list_intersections:
         recoveryKey = ""
