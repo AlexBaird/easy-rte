@@ -304,8 +304,9 @@ module F_LUT_Output_Edit (
 		input wire clk
 	);
 
-	{{range $index, $var := $block.InputVars}}reg {{$var.Name}} = 0;{{end}}
-	{{range $index, $var := $block.OutputVars}}reg {{$var.Name}} = 0;{{end}}
+	{{range $index, $var := $block.InputVars}}reg {{$var.Name}} = 0;
+	{{end}}{{range $index, $var := $block.OutputVars}}reg {{$var.Name}} = 0;
+	{{end}}
 	
 	//initial begin
 		{{range $index, $var := $block.InputVars}}// {{$var.Name}}_ptc_out = 0;{{end}}
@@ -314,6 +315,11 @@ module F_LUT_Output_Edit (
 
 	// LUT
 	always @(posedge clk) begin
+		// Default to original signal (to preserve transparency)
+		{{range $index, $var := $block.InputVars}}{{$var.Name}} = {{$var.Name}}_ptc_in;
+		{{end}}{{range $index, $var := $block.OutputVars}}{{$var.Name}} = {{$var.Name}}_ctp_in;
+		{{end}}
+
 		case({ {{range $polI, $pol := $block.Policies}}{{if not (equal $polI 0)}}, {{end}}{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref{{end}} }) 
 			{{getLUT $block.Name}}
 			default: begin {{range $index, $var := $block.InputVars}}

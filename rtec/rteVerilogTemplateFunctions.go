@@ -1,6 +1,7 @@
 package rtec
 
 import (
+	"bufio"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
@@ -79,7 +80,7 @@ type Row struct {
 	// XMLName			xml.Name	`xml:"Row"`
 	Recovery    string    `xml:"Recovery"`
 	RecoveryKey string    `xml:"RecoveryKey"`
-	Recovers     []Recover `xml:"Recover"`
+	Recovers    []Recover `xml:"Recover"`
 }
 
 type SelectLUT struct {
@@ -96,8 +97,18 @@ type EnforcedFunction struct {
 func boolStrToIntStr(boolStr string) string {
 	if boolStr == "True" {
 		return "1"
-	} else {
+	} else if boolStr == "False" {
 		return "0"
+	} else {
+		return ""
+	}
+}
+
+func isNone(boolStr string) bool {
+	if boolStr == "None" {
+		return true
+	} else {
+		return false
 	}
 }
 
@@ -106,45 +117,65 @@ func getLUT(blockName string) string {
 	fmt.Println(filename)
 
 	// Open our xmlFile
-	xmlFile, err := os.Open(filename)
+	xmlFile2, err2 := os.Open(filename)
 	// if we os.Open returns an error then handle it
+	if err2 != nil {
+		fmt.Println("\nError:", err2)
+		fmt.Println("\nCommonly projects have a different [Folder] and [Blockname].")
+		fmt.Println("\texample/[Folder]/[Blockname]_modified.xml")
+		fmt.Println("If your [Folder] != [Blockname] please enter a new [Folder] name here (followed by Enter/Return key):")
+		reader := bufio.NewReader(os.Stdin)
+		// ReadString will block until the delimiter is entered
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("An error occurred while reading input. Please try again", err)
+			return "error"
+		}
+		input = strings.TrimSuffix(input, "\n")
+		filename = "example/" + input + "/" + blockName + "_modified.xml"
+		fmt.Println("You gave me:", input)
+		fmt.Println("New filename:", filename)
+	}
+	xmlFile2.Close()
+
+	xmlFile, err := os.Open(filename)
 	if err != nil {
-		fmt.Println(err)
 		return "error"
-	} else {
+	}
 
-		fmt.Println("Successfully Opened " + filename)
-		// defer the closing of our xmlFile so that we can parse it later on
-		defer xmlFile.Close()
+	fmt.Println("Successfully Opened " + filename)
+	// defer the closing of our xmlFile so that we can parse it later on
+	defer xmlFile.Close()
 
-		// read our opened xmlFile as a byte array.
-		byteValue, _ := ioutil.ReadAll(xmlFile)
+	// read our opened xmlFile as a byte array.
+	byteValue, _ := ioutil.ReadAll(xmlFile)
 
-		var q EnforcedFunction
+	var q EnforcedFunction
 
-		xml.Unmarshal(byteValue, &q)
+	xml.Unmarshal(byteValue, &q)
 
-		// fmt.Println(q)
-		// fmt.Println(q.LUT)
-		// fmt.Println(q.LUT.Rows)
+	// fmt.Println(q)
+	// fmt.Println(q.LUT)
+	// fmt.Println(q.LUT.Rows)
 
-		// TODO: For each row
-		// Add to case statement!
-		var caseStatement string = ""
-		for i, row := range q.LUT.Rows {
-			if i != 0 {
-				caseStatement += "\t\t\t"
-			}
-			caseStatement += fmt.Sprint(len(row.RecoveryKey)) + "'b" + row.RecoveryKey + ": begin\n"
-			for _, signal := range row.Recovers {
+	// For each row
+	// Add to case statement!
+	var caseStatement string = ""
+	for i, row := range q.LUT.Rows {
+		if i != 0 {
+			caseStatement += "\t\t\t"
+		}
+		caseStatement += fmt.Sprint(len(row.RecoveryKey)) + "'b" + row.RecoveryKey + ": begin\n"
+		for _, signal := range row.Recovers {
+			if (!isNone(signal.Value)) {
 				caseStatement += "\t\t\t\t" + signal.Signal + " = " + boolStrToIntStr(signal.Value) + ";\n"
 			}
-			caseStatement += "\t\t\t\tend\n"
 		}
-		fmt.Println(caseStatement)
-
-		return caseStatement
+		caseStatement += "\t\t\t\tend\n"
 	}
+	fmt.Println(caseStatement)
+
+	return caseStatement
 }
 
 func getMaxRecoveryReference(policy rtedef.Policy) int {
@@ -156,7 +187,7 @@ func getMaxRecoveryReference(policy rtedef.Policy) int {
 	}
 	// fmt.Println(maxRecoveryRef)
 
-	return int(maxRecoveryRef)+1 // Quick fix for getVerilogWidthArray not working quite as expected
+	return int(maxRecoveryRef) + 1 // Quick fix for getVerilogWidthArray not working quite as expected
 }
 
 func add1IfClock(ctype string) string {
