@@ -7,6 +7,7 @@ interface of pb_and_ps_and_pj_and_pr {
 	out bool X_UP, X_DOWN;
 	out bool Y_UP, Y_DOWN;
 	out bool RPM_UP, RPM_DOWN;
+	out bool RPM_MAX;
 	//out bool x2_up, x2_down, y2_up, y2_down, rpm2_up, rpm2_down;
 }
 
@@ -87,10 +88,10 @@ policy pr of pb_and_ps_and_pj_and_pr {
 	states {
         
 		r0 {
-			-> r0 on ((RPM_UP && RPM_MAX));
-			-> r0 on ((!RPM_UP || RPM_DOWN));
+			-> r0 on (RPM_UP && RPM_MAX);
+			-> r0 on (!RPM_UP || RPM_DOWN);
 			-> violation on (RPM_UP && RPM_MAX) recover RPM_UP := 0;
-			-> violation on ((RPM_UP && RPM_DOWN)) recover RPM_UP := 0;
+			-> violation on (RPM_UP && RPM_DOWN) recover RPM_UP := 0;
 		}
 
 	}

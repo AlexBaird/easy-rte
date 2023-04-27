@@ -9,6 +9,7 @@ interface of pb_and_ps_and_pj_and_pr_and_pb2 {
 	out bool X2_UP, X2_DOWN;
 	out bool Y2_UP, Y2_DOWN;
 	out bool RPM_UP, RPM_DOWN;
+	in bool RPM_MAX;
 }
 
 policy ps of pb_and_ps_and_pj_and_pr_and_pb2 {

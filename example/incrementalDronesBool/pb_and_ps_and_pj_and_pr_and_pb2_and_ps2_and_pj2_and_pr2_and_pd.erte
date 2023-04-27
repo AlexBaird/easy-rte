@@ -188,7 +188,7 @@ policy pd of pb_and_ps_and_pj_and_pr_and_pb2_and_ps2_and_pj2_and_pr2_and_pd {
 	states {
         
 		b0 {
-			-> b0 on (!(X2_MIN) || !(X_MAX));
+			-> b0 on ((!X2_MIN) || (!X_MAX));
 			-> b0 on (((X2_MIN) && (X_MAX)) && (!X_DOWN && X2_UP));
 			-> b0 on (((X2_MIN) && (X_MAX)) && (X_DOWN && !X2_UP));
 			-> b0 on (((X2_MIN) && (X_MAX)) && (X_DOWN && X2_UP));
