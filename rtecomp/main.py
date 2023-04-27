@@ -85,6 +85,37 @@ def unwindConditions(conditions):
         unwound = unwindConditions(unwound)
     # print("Unwound to", unwound)
     return unwound
+    
+def pad(number, width):
+    b = '{0:b}'.format(number)
+    # Pad with 0s as required to meet length
+    toPad = width - len(b)
+    b = "0" * toPad + b
+    return b
+
+def getAllConditions(alphabet):
+    # Get list of boolean combinations
+    keys = alphabet.keys()
+    width = len(keys)
+
+    highest = pow(2, width)
+
+    conditions = []
+
+    for i in range(0, highest):
+        conditions.append(pad(i, width))
+
+    # Take each bool combo and turn into dict
+    newConditions = {}
+    for condition in conditions:
+        newCondition = {}
+        i = 0
+        for key in keys:
+            newCondition[key] = condition[i]
+            i += 1
+        newConditions[condition] = newCondition
+
+    return newConditions
 
 def addIfNotPresent(existing, new):
     notPresent = []
@@ -119,84 +150,84 @@ def isSingleSignal(conditionString, alphabetTemplate):
             return True
     return False
 
-def parse_noBracketsCondition(conditionStr, alphabetTemplate):
-    assert(parse_validateNoBrackets(conditionStr))
-    conditions = {}
-    clkConditions = {}
-    a = parse("{}and{}", conditionStr.lower())
-    print("Did I find and?", a)
-    if a is not None:
-        # AND - we can parse at this level for a single condition
-        print(a[0], "AND", a[1])
-        LHS = parse_singleSignal(a[0])
-        RHS = parse_singleSignal(a[1])
-        condition = alphabetTemplate.copy()
-        if not isClockCondition(LHS["signal"]):
-            condition[LHS["signal"]] = LHS["value"]
-        else:
-            condition[LHS["signal"]] = LHS["value"]
-        if not isClockCondition(RHS["signal"]):
-            condition[RHS["signal"]] = RHS["value"]
-        else:
-            condition[RHS["signal"]] = RHS["value"]
+# def parse_noBracketsCondition(conditionStr, alphabetTemplate):
+#     assert(parse_validateNoBrackets(conditionStr))
+#     conditions = {}
+#     clkConditions = {}
+#     a = parse("{}and{}", conditionStr.lower())
+#     print("Did I find and?", a)
+#     if a is not None:
+#         # AND - we can parse at this level for a single condition
+#         print(a[0], "AND", a[1])
+#         LHS = parse_singleSignal(a[0])
+#         RHS = parse_singleSignal(a[1])
+#         condition = alphabetTemplate.copy()
+#         if not isClockCondition(LHS["signal"]):
+#             condition[LHS["signal"]] = LHS["value"]
+#         else:
+#             condition[LHS["signal"]] = LHS["value"]
+#         if not isClockCondition(RHS["signal"]):
+#             condition[RHS["signal"]] = RHS["value"]
+#         else:
+#             condition[RHS["signal"]] = RHS["value"]
 
-        print(conditionStr, "becomes", condition)
-        conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
+#         print(conditionStr, "becomes", condition)
+#         conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
 
-    else:
-        # check for or
-        a = parse("{}or{}", conditionStr.lower())
-        if a is None:
-            print("Problem parsing no brackets condition: ", conditionStr)
-            if isClockCondition(conditionStr):
+#     else:
+#         # check for or
+#         a = parse("{}or{}", conditionStr.lower())
+#         if a is None:
+#             print("Problem parsing no brackets condition: ", conditionStr)
+#             if isClockCondition(conditionStr):
 
-                # print("Single Clk condition: ", conditionStr)
+#                 # print("Single Clk condition: ", conditionStr)
                 
-                # Assumption is that ONLY the absence of all signals is causing this
-                any = alphabetTemplate.copy()
-                allAbsent = unwindConditions({getKey(any): any})
-                # for sig in allAbsent:
-                #     allAbsent[sig] = False
-                # print("allAbsent", allAbsent)
+#                 # Assumption is that ONLY the absence of all signals is causing this
+#                 any = alphabetTemplate.copy()
+#                 allAbsent = unwindConditions({getKey(any): any})
+#                 # for sig in allAbsent:
+#                 #     allAbsent[sig] = False
+#                 # print("allAbsent", allAbsent)
 
-                # conditions = {**conditions, **unwindConditions({getKey(allAbsent): allAbsent})}
-                conditions = {getKey(allAbsent):allAbsent}
-                # return conditions, clkConditions
-                return {}, clkConditions
+#                 # conditions = {**conditions, **unwindConditions({getKey(allAbsent): allAbsent})}
+#                 conditions = {getKey(allAbsent):allAbsent}
+#                 # return conditions, clkConditions
+#                 return {}, clkConditions
 
-            elif isSingleSignal(conditionStr, alphabetTemplate):
-                # print("Single condition: ", conditionStr)
-                single = parse_singleSignal(conditionStr)
-                condition = alphabetTemplate.copy()
-                condition[single["signal"]] = single["value"]
-                conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
-                return conditions, clkConditions
+#             elif isSingleSignal(conditionStr, alphabetTemplate):
+#                 # print("Single condition: ", conditionStr)
+#                 single = parse_singleSignal(conditionStr)
+#                 condition = alphabetTemplate.copy()
+#                 condition[single["signal"]] = single["value"]
+#                 conditions = {**conditions, **unwindConditions({getKey(condition): condition})}
+#                 return conditions, clkConditions
 
-            else:
-                assert(False)
-        print(a[0], "OR", a[1])
+#             else:
+#                 assert(False)
+#         print(a[0], "OR", a[1])
 
-        LHS = parse_singleSignal(a[0])
-        condition1 = alphabetTemplate.copy()
-        if not isClockCondition(LHS["signal"]):
-            condition1[LHS["signal"]] = LHS["value"]
-        else:
-            condition1[LHS["signal"]] = LHS["value"]
-            # clkConditions[LHS["signal"]] = LHS["value"]
-        conditions = {**conditions, **unwindConditions({getKey(condition1): condition1})}
+#         LHS = parse_singleSignal(a[0])
+#         condition1 = alphabetTemplate.copy()
+#         if not isClockCondition(LHS["signal"]):
+#             condition1[LHS["signal"]] = LHS["value"]
+#         else:
+#             condition1[LHS["signal"]] = LHS["value"]
+#             # clkConditions[LHS["signal"]] = LHS["value"]
+#         conditions = {**conditions, **unwindConditions({getKey(condition1): condition1})}
 
-        RHS = parse_singleSignal(a[1])
-        condition2 = alphabetTemplate.copy()
-        if not isClockCondition(RHS["signal"]):
-            condition2[RHS["signal"]] = RHS["value"]
-        else:
-            condition2[RHS["signal"]] = RHS["value"]
-            # clkConditions[RHS["signal"]] = RHS["value"]
+#         RHS = parse_singleSignal(a[1])
+#         condition2 = alphabetTemplate.copy()
+#         if not isClockCondition(RHS["signal"]):
+#             condition2[RHS["signal"]] = RHS["value"]
+#         else:
+#             condition2[RHS["signal"]] = RHS["value"]
+#             # clkConditions[RHS["signal"]] = RHS["value"]
 
-        conditions = {**conditions, **unwindConditions({getKey(condition2): condition2})}
+#         conditions = {**conditions, **unwindConditions({getKey(condition2): condition2})}
     
-    # print(conditionStr, "becomes", conditions, clkConditions)
-    return conditions, clkConditions
+#     # print(conditionStr, "becomes", conditions, clkConditions)
+#     return conditions, clkConditions
 
 def getCharacterRepeated(count, char):
     repeated = ""
@@ -362,13 +393,12 @@ def convertConditionToDictOfBools(conditionString, alphabetTemplate):
     # print("Returning: ", topCondition, "and clk", clk)
     return topCondition, clk
 
-def getAcceptableTransitions(violationConditions, alphabetTemplate):
+def getAcceptableTransitions(violationConditions, allConditions):
     violationConditionsNoClocks = violationConditions #removeClockConditionKeys(violationConditions, alphabetTemplate)
     # print("with clocks:", violationConditions)
     # print("without clocks:", violationConditionsNoClocks)
-    any = alphabetTemplate.copy()
     acceptableTransitions = {}
-    allConditions = unwindConditions({getKey(any): any})
+    allConditions = allConditions.copy()
     for condition in allConditions: # TODO: Come up with a way to compare while ignoring any clock conditions?
         if condition in violationConditionsNoClocks:
             pass
@@ -653,6 +683,13 @@ def main(dir, file):
     #         print("\t", childchild.tag, childchild.attrib)
 
     print("==========================================")
+    print(" DETERMINE ALL POSSIBLE CONDITIONS")
+    print("==========================================")
+    print(" - This may take a moment")
+    allConditions = getAllConditions(alphabetTemplate.copy())
+    print(" - Unique combinations of I/O: ", len(allConditions))
+
+    print("==========================================")
     print(" COLLECTING ALL VIOLATING TRANSITIONS")
     print("==========================================")
 
@@ -691,7 +728,7 @@ def main(dir, file):
                 violationConditions, _ = convertConditionToDictOfBools(transition.find("Condition").text, alphabetTemplate)
                 # print(policy.attrib.get("Name"), " ", transition.find("Source").text, " to ", transition.find("Destination").text, " on ", transition.find("Condition").text, ". Recovers with ", child.find("VarName").text, child.find("Value").text)
                 # print("Violation Conditions: ", violationConditions)
-                acceptable = getAcceptableTransitions(violationConditions, alphabetTemplate)
+                acceptable = getAcceptableTransitions(violationConditions, allConditions)
                 location = transition.find("Source").text
 
                 for violatingCondition in violationConditions:
@@ -1001,6 +1038,11 @@ if __name__ == "__main__":
         assert(len(sys.argv) == 3)
     projectDir = sys.argv[1]
     projectFile = sys.argv[2]
+
+    # import cProfile
+    # import re
+    # cProfile.run("main(projectDir,projectFile)")
+
     main(projectDir, projectFile)
 
 ###########################################################################
