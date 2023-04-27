@@ -50,6 +50,8 @@ def convertToAlphabet(list, alphabetTemplate):
                 if list[i][1:] in alphabet.keys():
                     newListTemp.append(list[i])
                     i += 1
+                else:
+                    raise KeyError("An item '" + list[i] + "' in the provided list is not in the alphabet template.")
             elif list[i+1] in clockRelated:
                 # print("Found clk condition")
                 i += 3
