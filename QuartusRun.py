@@ -93,21 +93,24 @@ if __name__ == "__main__":
 		if thing.startswith("parallel") and thing.endswith(".sv"):
 			files.append(thing.replace(".sv",""))
 
+	# files = ['parallel_F_pb_and_ps']
+
 	# Setup folder for compilation
 	for file in files:
 		try:
-			os.mkdir(basedir + "\\compiled_" + file)
+			os.mkdir(basedir + "\\c_" + file[0:10] + file[-5:])
 		except:
 			pass
-
-		shutil.copyfile(projectDir+"\\"+basedir+"\\"+file+".sv", projectDir+"\\"+basedir+"\\compiled_"+file+"\\"+file+".sv")
+		dir = file[0:10] + file[-5:]
+		shutil.copyfile(projectDir+"\\"+basedir+"\\"+file+".sv", projectDir+"\\"+basedir+"\\c_"+dir+"\\"+file+".sv")
 
 	# Perform compilation
 	for file in files:
 		print(file)
 
 		# os.chdir(basedir + "/" + "Monolithic")
-		os.chdir(basedir + "\\compiled_" + file)
+		dir = file[0:10] + file[-5:]
+		os.chdir(basedir + "\\c_" + dir)
 
 		direc = basedir #+"_new"+ str(j+2) + "neurons"
 		# print(direc)
