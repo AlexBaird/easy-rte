@@ -57,7 +57,6 @@ policy pb of pb_and_ps_and_pj_and_pr_and_pb2_and_ps2_and_pj2_and_pr2 {
 
 policy pj of pb_and_ps_and_pj_and_pr_and_pb2_and_ps2_and_pj2_and_pr2 {
 	internals {
-		constant uint8_t THRESHOLD := 5; 
 		dtimer_t V1;
 	}
 
@@ -69,10 +68,10 @@ policy pj of pb_and_ps_and_pj_and_pr_and_pb2_and_ps2_and_pj2_and_pr2 {
 		}
 
 		l1 {
-			-> l1 on (X_UP || X_DOWN || Y_UP || (Y_DOWN && V1 <= THRESHOLD) || RPM_UP || RPM_DOWN): V1 := 0;
-			-> l1 on (!X_UP && !X_DOWN && !Y_UP && !Y_DOWN && V1 <= THRESHOLD && !RPM_UP && !RPM_DOWN);
-			-> l2 on (Y_DOWN && V1 > THRESHOLD);
-			-> violation on (V1 > THRESHOLD) recover Y_DOWN := 1;
+			-> l1 on (X_UP || X_DOWN || Y_UP || (Y_DOWN && V1 <= 5) || RPM_UP || RPM_DOWN): V1 := 0;
+			-> l1 on (!X_UP && !X_DOWN && !Y_UP && !Y_DOWN && V1 <= 5 && !RPM_UP && !RPM_DOWN);
+			-> l2 on (Y_DOWN && V1 > 5);
+			-> violation on (V1 > 5) recover Y_DOWN := 1;
 		}
 
 		l2 {
@@ -141,7 +140,6 @@ policy ps2 of pb_and_ps_and_pj_and_pr_and_pb2_and_ps2_and_pj2_and_pr2 {
 
 policy pj2 of pb_and_ps_and_pj_and_pr_and_pb2_and_ps2_and_pj2_and_pr2 {
 	internals {
-		constant uint8_t THRESHOLD2 := 5; 
 		dtimer_t V2;
 	}
 
@@ -153,10 +151,10 @@ policy pj2 of pb_and_ps_and_pj_and_pr_and_pb2_and_ps2_and_pj2_and_pr2 {
 		}
 
 		l1 {
-			-> l1 on (X2_UP || X2_DOWN || Y2_UP || (Y2_DOWN && V2 <= THRESHOLD2) || RPM2_UP || RPM2_DOWN): V2 := 0;
-			-> l1 on (!X2_UP && !X2_DOWN && !Y2_UP && !Y2_DOWN && V2 <= THRESHOLD2 && !RPM2_UP && !RPM2_DOWN);
-			-> l2 on (Y2_DOWN && V2 > THRESHOLD2);
-			-> violation on (V2 > THRESHOLD2) recover Y2_DOWN := 1;
+			-> l1 on (X2_UP || X2_DOWN || Y2_UP || (Y2_DOWN && V2 <= 5) || RPM2_UP || RPM2_DOWN): V2 := 0;
+			-> l1 on (!X2_UP && !X2_DOWN && !Y2_UP && !Y2_DOWN && V2 <= 5 && !RPM2_UP && !RPM2_DOWN);
+			-> l2 on (Y2_DOWN && V2 > 5);
+			-> violation on (V2 > 5) recover Y2_DOWN := 1;
 		}
 
 		l2 {

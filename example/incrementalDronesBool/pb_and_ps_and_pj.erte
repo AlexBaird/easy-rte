@@ -54,7 +54,6 @@ policy pb of pb_and_ps_and_pj {
 
 policy pj of pb_and_ps_and_pj {
 	internals {
-		constant uint8_t THRESHOLD := 5; 
 		dtimer_t V1;
 	}
 
@@ -66,10 +65,10 @@ policy pj of pb_and_ps_and_pj {
 		}
 
 		l1 {
-			-> l1 on (Y_DOWN && V1 <= THRESHOLD) || Y_UP || X_UP || X_DOWN || RPM_UP || RPM_DOWN: V1 := 0;
-			-> l1 on (!X_UP && !X_DOWN && !Y_UP && !Y_DOWN && V1 <= THRESHOLD && !RPM_UP && !RPM_DOWN);
-			-> l2 on (Y_DOWN && V1 > THRESHOLD);
-			-> violation on (V1 > THRESHOLD) recover Y_DOWN := 1;
+			-> l1 on (Y_DOWN && V1 <= 5) || Y_UP || X_UP || X_DOWN || RPM_UP || RPM_DOWN: V1 := 0;
+			-> l1 on (!X_UP && !X_DOWN && !Y_UP && !Y_DOWN && V1 <= 5 && !RPM_UP && !RPM_DOWN);
+			-> l2 on (Y_DOWN && V1 > 5);
+			-> violation on (V1 > 5) recover Y_DOWN := 1;
 		}
 
 		l2 {
