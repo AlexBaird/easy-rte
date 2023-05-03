@@ -1,5 +1,6 @@
 
 import os
+import sys
 import shutil
 import datetime
 import subprocess
@@ -79,40 +80,37 @@ def log(path, file, textToLog):
 		s = ("{}".format(textToLog))
 		f.write(s)
 
-if __name__ == "__main__":  
-
-	quartusDir = "M:\\Software\\Quartus\\quartus\\bin64\\"
-	# projectDir = "C:\\Users\\Alex\\Downloads\\Quartus"
-	projectDir = "D:\\github.com\\AlexBaird\\easy-rte-composition\\example"
-	os.chdir(projectDir)
-	basedir = "incrementalDronesBool" 
+def main(baseDir, projectDir, quartusDir="M:\\Software\\Quartus\\quartus\\bin64\\"):  
+	# quartusDir = "M:\\Software\\Quartus\\quartus\\bin64\\"
+	# baseDir = "D:\\github.com\\AlexBaird\\easy-rte-composition\\example"
+	os.chdir(baseDir)
+	# projectDir = "Printer_3D" 
 
 	files = []
-	dir_list = os.listdir(basedir)
+	dir_list = os.listdir(projectDir)
 	for thing in dir_list:
-		if thing.startswith("parallel") and thing.endswith(".sv"):
+		# if thing.startswith("synthesis") and thing.endswith(".sv"):
+		if thing.endswith(".sv"):
 			files.append(thing.replace(".sv",""))
-
-	# files = ['parallel_F_pb_and_ps']
 
 	# Setup folder for compilation
 	for file in files:
 		try:
-			os.mkdir(basedir + "\\c_" + file[0:10] + file[-5:])
+			os.mkdir(projectDir + "\\c_" + file[0:10] + file[-5:])
 		except:
 			pass
 		dir = file[0:10] + file[-5:]
-		shutil.copyfile(projectDir+"\\"+basedir+"\\"+file+".sv", projectDir+"\\"+basedir+"\\c_"+dir+"\\"+file+".sv")
+		shutil.copyfile(baseDir+"\\"+projectDir+"\\"+file+".sv", baseDir+"\\"+projectDir+"\\c_"+dir+"\\"+file+".sv")
 
 	# Perform compilation
 	for file in files:
 		print(file)
 
-		# os.chdir(basedir + "/" + "Monolithic")
+		# os.chdir(projectDir + "/" + "Monolithic")
 		dir = file[0:10] + file[-5:]
-		os.chdir(basedir + "\\c_" + dir)
+		os.chdir(projectDir + "\\c_" + dir)
 
-		direc = basedir #+"_new"+ str(j+2) + "neurons"
+		direc = projectDir #+"_new"+ str(j+2) + "neurons"
 		# print(direc)
 		# os.chdir(direc)
 
@@ -128,10 +126,35 @@ if __name__ == "__main__":
 		]
 
 		for process in processesToRun:
-			with open(projectDir+"\\"+basedir+"\\compiled_"+file+"\\log.txt", 'a') as f:
+			with open(baseDir+"\\"+projectDir+"\\c_"+dir+"\\log.txt", 'a') as f:
 				try:
 					subprocess.run(process, stdout=f, universal_newlines=True)
 				except:
 					pass
         
 		os.chdir("..\\..")
+
+
+###########################################################################
+
+if __name__ == "__main__":
+	if (len(sys.argv) < 3):
+		print("ERROR\nExpecting at least 2 arguments: base directory then project directory.")
+		print("For the AB example: python QuartusRun.py AB AB\n")
+		assert(len(sys.argv) >= 3)
+
+	baseDir = sys.argv[1]
+	projectDir = sys.argv[2]
+
+	if (len(sys.argv) == 4):
+		quartusDir = sys.argv[3]
+		main(baseDir, projectDir, quartusDir)
+	else:
+		main(baseDir, projectDir)
+
+    # import cProfile
+    # import re
+    # cProfile.run("main(projectDir,projectFile)")
+
+
+###########################################################################
