@@ -745,49 +745,48 @@ def main(dir, file):
 
         # If intersection is none, then we need to be more thoughtful
         # intersectionFound = False
-        if len(intersection) == 0:
-            # Specifically comparing for 2s, which are nones- and therefore we dont mind what they are
-            for oneKey in oneKeys:
-                for twoKey in twoKeys:
-                    match = True
+        # Specifically comparing for 2s, which are nones- and therefore we dont mind what they are
+        for oneKey in oneKeys:
+            for twoKey in twoKeys:
+                match = True
+                for i in range(0, len(oneKey)):
+                    # If 0 in onekey, then accept 0 / 2 in twokey
+                    if (oneKey[i] == "0"):
+                        if (twoKey[i] != "0") and (twoKey[i] != "2"):
+                            # Key doesn't match
+                            match = False
+                            break
+                    # If 1 in onekey, then accept 1 / 2 in twokey
+                    elif (oneKey[i] == "1"):
+                        if (twoKey[i] != "1") and (twoKey[i] != "2"):
+                            # Key doesn't match
+                            match = False
+                            break
+
+                    # If 2 in onekey, then accept any in twokey
+                    elif (oneKey[i] == "2"):
+                        continue
+                    
+                if match:
+                    jointKey = ""
                     for i in range(0, len(oneKey)):
-                        # If 0 in onekey, then accept only 0 in twokey
-                        if (oneKey[i] == "0"):
-                            if twoKey[i] != "0":
-                                # Key doesn't match
-                                match = False
-                                break
-                        # If 1 in onekey, then accept only 1 in twokey
-                        elif (oneKey[i] == "1"):
-                            if twoKey[i] != "1":
-                                # Key doesn't match
-                                match = False
-                                break
+                        if (oneKey[i] == "2"):
+                            jointKey += twoKey[i]
+                        elif (twoKey[i] == "2"):
+                            jointKey += oneKey[i]
+                        else:
+                            jointKey += oneKey[i]
+                    intersection[jointKey] = convertKeyToBools(jointKey, alphabetTemplate, allowNone=True)
+                    print("Match", oneKey, twoKey, jointKey)
+                else:
+                    print("No-Match", oneKey, twoKey)
+                    
 
-                        # If 2 in onekey, then accept any in twokey
-                        elif (oneKey[i] == "2"):
-                            continue
-                        
-                    if match:
-                        jointKey = ""
-                        for i in range(0, len(oneKey)):
-                            if (oneKey[i] == "2"):
-                                jointKey += twoKey[i]
-                            elif (twoKey[i] == "2"):
-                                jointKey += oneKey[i]
-                            else:
-                                jointKey += oneKey[i]
-                        intersection[jointKey] = convertKeyToBools(jointKey, alphabetTemplate, allowNone=True)
-                        # print("Match", oneKey, twoKey, jointKey)
-                    # else:
-                        # print("No-Match", oneKey, twoKey)
-                        
-
-                    # for oAK in oneAgnosticKey:
-                    #     if oAK in twoAgnosticKey:
-                    #         intersection[oAK] = convertKeyToBools(oAK, alphabetTemplate)
-                            # intersectionFound = True
-                            # break
+                # for oAK in oneAgnosticKey:
+                #     if oAK in twoAgnosticKey:
+                #         intersection[oAK] = convertKeyToBools(oAK, alphabetTemplate)
+                        # intersectionFound = True
+                        # break
 
         return intersection
 
