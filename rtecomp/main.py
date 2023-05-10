@@ -730,12 +730,15 @@ def main(dir, file):
     def intersectionDictTransitions(one, two, alphabetTemplate):
         oneKeys = []
         for item in one:
-            oneKeys.append(list(item["bool"].keys())[0])
+            # oneKeys.append(list(item["bool"].keys())[0])
+            # oneKeys.append(item["bool"].keys())
+            oneKeys = oneKeys + list(item["bool"].keys())
         twoKeys = []
         for item in two:
-            twoKeys.append(list(item["bool"].keys())[0])
+            twoKeys = twoKeys + list(item["bool"].keys())
+            # twoKeys.append(list(item["bool"].keys())[0])
 
-        intersection = {}
+        intersection = []
         # for each key in one
         # for oneKey in oneKeys:
         #     # if key is in two
@@ -776,10 +779,13 @@ def main(dir, file):
                             jointKey += oneKey[i]
                         else:
                             jointKey += oneKey[i]
-                    intersection[jointKey] = convertKeyToBools(jointKey, alphabetTemplate, allowNone=True)
-                    print("Match", oneKey, twoKey, jointKey)
-                else:
-                    print("No-Match", oneKey, twoKey)
+                    intersection.append(
+                        {"bool":
+                         {jointKey: convertKeyToBools(jointKey, alphabetTemplate, allowNone=True)}
+                         })
+                    # print("Match", oneKey, twoKey, jointKey)
+                # else:
+                    # print("No-Match", oneKey, twoKey)
                     
 
                 # for oAK in oneAgnosticKey:
@@ -855,12 +861,15 @@ def main(dir, file):
             randInt = 0
 
         print("\t - Found " + str(numAccTrans) + " accepting solutions. Picked index " + str(randInt))
-        randKey = list(accepting.keys())[randInt]
+        # randKey = list(accepting.keys())[randInt]
+        # randKey = accepting[randInt]
+        randKey = list(accepting[randInt]["bool"].keys())[0]
+        randValues = accepting[randInt]["bool"][randKey]
         # Now we have the intersection, add it to the list
         list_intersections.append({
             **combination, 
             "intersection":accepting,
-            "randEdit":{"key":randKey, "signals":accepting[randKey]}
+            "randEdit":{"key":randKey, "signals":randValues}
         })
 
     # Quick fix to add recovery references to the list of intersections
