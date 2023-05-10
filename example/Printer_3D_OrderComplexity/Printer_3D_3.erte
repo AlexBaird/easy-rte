@@ -1,0 +1,122 @@
+function Printer_3D_3;
+interface of Printer_3D_3 {
+	in bool MAX_TEMP_HOTEND;
+	in bool MAX_TEMP_HEATBREAK;
+	in bool MAX_TEMP_HEATBED;
+	in bool MAX_TEMP_AMBIENT;
+	in bool MAX_CURRENT_HOTEND;
+	in bool MAX_CURRENT_HEATBED;
+
+	in bool STALL_AXIS_X;
+	in bool STALL_AXIS_Y;
+	in bool STALL_AXIS_Z;
+	in bool STALL_AXIS_E;
+	
+	in bool RESET;
+
+	out bool EN_HEAT_HOTEND;
+	out bool EN_HEAT_HEATBED;
+	
+	out bool EN_FAN_1;
+	out bool EN_FAN_2;
+
+	out bool EN_MOTOR_X;
+	out bool EN_MOTOR_Y;
+	out bool EN_MOTOR_Z;
+	out bool EN_MOTOR_E;
+}
+
+
+policy PROTECT_STEPPER_E of Printer_3D_3 {
+	internals {
+		dtimer_t V_E;
+	}
+	
+	states {
+
+		l0 {
+			-> l0 on (RESET): V_E := 0;
+			-> l1 on (!RESET): V_E := 0;
+		}
+
+		l1 {
+			-> l0 on (RESET): V_E := 0;
+			-> l1 on (EN_MOTOR_E and !STALL_AXIS_E);
+			-> l1 on (!EN_MOTOR_E and STALL_AXIS_E);
+			-> l1 on (!EN_MOTOR_E and !STALL_AXIS_E);
+			-> l2 on (EN_MOTOR_E and STALL_AXIS_E): V_E := 0;
+		}
+
+		l2 {
+			-> l0 on (RESET): V_E := 0;
+			-> l1 on (EN_MOTOR_E and !STALL_AXIS_E);
+			-> l1 on (!EN_MOTOR_E and STALL_AXIS_E);
+			-> l1 on (!EN_MOTOR_E and !STALL_AXIS_E);
+			-> l2 on (EN_MOTOR_E and STALL_AXIS_E and V_E < 5);
+			-> violation on (EN_MOTOR_E and STALL_AXIS_E and V_E >= 5);
+		}
+	}
+}
+
+
+policy PROTECT_STEPPER_X of Printer_3D_3 {
+	internals {
+		dtimer_t V_X;
+	}
+	
+	states {
+
+		l0 {
+			-> l0 on (RESET): V_X := 0;
+			-> l1 on (!RESET): V_X := 0;
+		}
+
+		l1 {
+			-> l0 on (RESET): V_X := 0;
+			-> l1 on (EN_MOTOR_X and !STALL_AXIS_X);
+			-> l1 on (!EN_MOTOR_X and STALL_AXIS_X);
+			-> l1 on (!EN_MOTOR_X and !STALL_AXIS_X);
+			-> l2 on (EN_MOTOR_X and STALL_AXIS_X): V_X := 0;
+		}
+
+		l2 {
+			-> l0 on (RESET): V_X := 0;
+			-> l1 on (EN_MOTOR_X and !STALL_AXIS_X);
+			-> l1 on (!EN_MOTOR_X and STALL_AXIS_X);
+			-> l1 on (!EN_MOTOR_X and !STALL_AXIS_X);
+			-> l2 on (EN_MOTOR_X and STALL_AXIS_X and V_X < 5);
+			-> violation on (EN_MOTOR_X and STALL_AXIS_X and V_X >= 5);
+		}
+	}
+}
+
+policy PROTECT_STEPPER_Y of Printer_3D_3 {
+	internals {
+		dtimer_t V_Y;
+	}
+	
+	states {
+
+		l0 {
+			-> l0 on (RESET): V_Y := 0;
+			-> l1 on (!RESET): V_Y := 0;
+		}
+
+		l1 {
+			-> l0 on (RESET): V_Y := 0;
+			-> l1 on (EN_MOTOR_Y and !STALL_AXIS_Y);
+			-> l1 on (!EN_MOTOR_Y and STALL_AXIS_Y);
+			-> l1 on (!EN_MOTOR_Y and !STALL_AXIS_Y);
+			-> l2 on (EN_MOTOR_Y and STALL_AXIS_Y): V_Y := 0;
+		}
+
+		l2 {
+			-> l0 on (RESET): V_Y := 0;
+			-> l1 on (EN_MOTOR_Y and !STALL_AXIS_Y);
+			-> l1 on (!EN_MOTOR_Y and STALL_AXIS_Y);
+			-> l1 on (!EN_MOTOR_Y and !STALL_AXIS_Y);
+			-> l2 on (EN_MOTOR_Y and STALL_AXIS_Y and V_Y < 5);
+			-> violation on (EN_MOTOR_Y and STALL_AXIS_Y and V_Y >= 5);
+		}
+	}
+}
