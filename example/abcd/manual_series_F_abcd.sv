@@ -989,52 +989,49 @@ module manual_series_sim_FSM (
 
 		case (c_state)
 		4'b0001: begin
-			// Input 1
+			// Input Enf 1
 			c_in_1 = 1;
 		end
 		4'b0010: begin
-			// Input 2
+			// Input Enf 2
 			c_in_2 = 1;
 		end
 		4'b0011: begin
-			// Input 3
+			// Input Enf 3
 			c_in_3 = 1;
 		end
 		4'b0100: begin
 			// Express Input 
-			
 			A_enf = A_ptc_enf;
 			A_trans = A_ptc_enf;
-
-			// Controller
+			// Controller Runs
 		end
 		4'b0101: begin
-			// Output 1
+			// Output Enf 1
 			c_out_1 = 1;
 		end
 		4'b0110: begin
-			// Output 2
+			// Output Enf 2
 			c_out_2 = 1;
 		end
 		4'b0111: begin
-			// Output 3
+			// Output Enf 3
 			c_out_3 = 1;
 		end
 		4'b1000: begin
 			// Express Output
-			
 			B_enf = B_ctp_enf;
 			B_trans = B_ctp_enf;
 			C_enf = C_ctp_enf;
 			C_trans = C_ctp_enf;
 			D_enf = D_ctp_enf;
 			D_trans = D_ctp_enf;
-
 		end
 		4'b0101: begin
 			// Transition
 			c_trans = 1;
 		end
+
 	endcase
 
 	end

@@ -9,10 +9,23 @@ make verilog_enf PROJECT=abcd FILE=abcd_modified COMPILEARGS=-parallelCompositio
 vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition/example/abcd/parallel_F_abcd.sv
 vsim work.parallel_F_abcd
 
+# Series (Compiled)
+./easy-rte-parser -i example/abcd/abcd.erte -o example/abcd/abcd.xml
+python rtecomp/main.py abcd abcd
+make verilog_enf PROJECT=abcd FILE=abcd_modified COMPILEARGS=-serialComposition
+
+## Model Sim
+vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition/example/abcd/series_F_abcd.sv
+vsim work.series_F_abcd
+### Add Clock
+force -freeze sim:/manual_series_F_abcd/clk 1 0, 0 {50 ps} -r 100
+force -freeze sim:/series_F_abcd/clk 1 0, 0 {50 ps} -r 100
+### Run 2ns
+run 2ns
+
 # Series (Manual)
 vlog -reportprogress 300 -work work D:/github.com/AlexBaird/easy-rte-composition/example/abcd/manual_series_F_abcd.sv
 vsim work.manual_series_F_abcd
-
 ## Add Waves
 add wave -position end  sim:/manual_series_F_abcd/A_ptc
 add wave -position end  sim:/manual_series_F_abcd/A_ptc_out
@@ -52,10 +65,8 @@ add wave -position end  sim:/manual_series_F_abcd/D_ctp_out_ignore
 add wave -position end  sim:/manual_series_F_abcd/D_ctp_out_latched
 add wave -position end  sim:/manual_series_F_abcd/D_ctp_out_trans
 add wave -position end  sim:/manual_series_F_abcd/fsm_state
-
 ## Add Clock
 force -freeze sim:/manual_series_F_abcd/clk 1 0, 0 {50 ps} -r 100
-
 ## Run 2ns
 run 2ns
 
