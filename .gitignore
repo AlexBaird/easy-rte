@@ -7,6 +7,14 @@
 *.out.govar
 *.swp
 
+go.sum
+go.mod
+
+easy-rte-comp
+
+easy-rte-composition-modelsim.mpf
+easy-rte-composition-modelsim.cr.mti
+
 *.xml
 main/main
 
@@ -21,5 +29,5 @@ example/*/*
 !*.erte
 !*main.c
 !*.md
-go.sum
-go.mod
+
+cpu_time_charts.xlsx
