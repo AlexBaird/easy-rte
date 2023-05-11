@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/PRETgroup/easy-rte/rtedef"
@@ -206,6 +207,79 @@ func getVerilogWidthArray(l int) string {
 		return fmt.Sprintf("[%v:0]", cl2)
 	}
 	return ""
+}
+
+
+func getLastPolicy(policies rtedef.EnforcedFunction) string {
+	return (policies.Policies[len(policies.Policies)-1].Name)
+}
+
+func getFSMNumStates(policies rtedef.EnforcedFunction) int{
+	return 5+2*(len(policies.Policies)-1);
+}
+
+func getFSMStateWidth(policies rtedef.EnforcedFunction) int {
+	var numStates = getFSMNumStates(policies)
+	return ceilLog2(uint64(numStates))
+}
+
+func getFSMStateWidthDeclareString(policies rtedef.EnforcedFunction) string {
+	var numStates = getFSMNumStates(policies)
+	return getVerilogWidthArray(numStates)
+}
+
+func convertToBoolWithWidth(i int, width int) string {
+	return fmt.Sprintf("%0" + strconv.Itoa(width) + "b", i)
+}
+
+func getLastFSMState(policies rtedef.EnforcedFunction) string {
+	return strconv.Itoa(getFSMStateWidth(policies)) + "'b" + convertToBoolWithWidth(getFSMNumStates(policies), getFSMStateWidth(policies))
+}
+
+func getFSMCaseStatement(policies rtedef.EnforcedFunction) string {
+	var numStates = getFSMNumStates(policies)
+	var width = strconv.Itoa(getFSMStateWidth(policies)) 
+	var caseStatement = ""
+	var numPolicies = len(policies.Policies[0].Name)
+	var policyCounter = 0
+	for i:=1; i<=numStates; i++ {
+		caseStatement += width + "'b" + convertToBoolWithWidth(i, getFSMStateWidth(policies)) + ": begin\n\t\t\t\t"
+		if (i <= numPolicies + 1) {
+			// Input Enforcement
+			policyCounter += 1
+			caseStatement += "// Input Enf " + strconv.Itoa(policyCounter) + "\n\t\t\t\t"
+			caseStatement += "c_in_" + policies.Policies[policyCounter-1].Name + " = 1;\n\t\t\t"
+		} else if (i == numPolicies + 2) {
+			// Express Input
+			caseStatement += "// Express Input\n\t\t\t\t"
+			for _, input := range policies.InputVars {
+				caseStatement += input.Name + "_enf = " + input.Name + "_ptc_enf;\n\t\t\t\t"
+				caseStatement += input.Name + "_trans = " + input.Name + "_ptc_enf;\n\t\t\t\t"
+			} 
+			caseStatement += "// Controller Runs\n\t\t\t"
+			policyCounter = 0
+		} else if ((i > numPolicies + 2) && (i <= numPolicies*2 + 3)) {
+			// Output Enforcement
+			policyCounter += 1
+			caseStatement += "// Output Enf " + strconv.Itoa(policyCounter) + "\n\t\t\t\t"
+			caseStatement += "c_out_" + policies.Policies[policyCounter-1].Name + " = 1;\n\t\t\t"
+		} else if (i == numPolicies*2 + 4) {
+			// Express Output
+			caseStatement += "// Express Output\n\t\t\t"
+			for _, output := range policies.OutputVars {
+				caseStatement += output.Name + "_enf = " + output.Name + "_ctp_enf;\n\t\t\t\t"
+				caseStatement += output.Name + "_trans = " + output.Name + "_ctp_enf;\n\t\t\t\t"
+			} 
+
+		} else if (i == numPolicies*2 + 5) {
+			// Transition
+			caseStatement += "// Transition\n\t\t\t\t"
+			caseStatement += "c_trans = 1;\n\t\t\t"
+		}
+		caseStatement += "end\n\t\t\t"
+	}
+
+	return caseStatement
 }
 
 var t = [6]uint64{

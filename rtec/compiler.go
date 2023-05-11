@@ -19,7 +19,7 @@ type Converter struct {
 }
 
 //New returns a new instance of a Converter based on the provided language
-func New(language string, parallelComposition bool, synthesis bool) (*Converter, error) {
+func New(language string, serialComposition bool, parallelComposition bool, synthesis bool) (*Converter, error) {
 	switch strings.ToLower(language) {
 	case "c":
 		return &Converter{Funcs: make([]rtedef.EnforcedFunction, 0), Language: "c", templates: cTemplates}, nil
@@ -29,6 +29,8 @@ func New(language string, parallelComposition bool, synthesis bool) (*Converter,
 	case "verilog":
 		if parallelComposition {
 			return &Converter{Funcs: make([]rtedef.EnforcedFunction, 0), Language: "verilog", templates: verilogParallelCompositionTemplates}, nil
+		} else if serialComposition {
+			return &Converter{Funcs: make([]rtedef.EnforcedFunction, 0), Language: "verilog", templates: verilogSerialCompositionTemplates}, nil
 		} else if synthesis {
 			return &Converter{Funcs: make([]rtedef.EnforcedFunction, 0), Language: "verilog", templates: verilogSynthesisTemplates}, nil
 		} else {
@@ -66,7 +68,7 @@ type TemplateData struct {
 
 //ConvertAll converts iec61499 xml (stored as []FB) into vhdl []byte for each block (becomes []VHDLOutput struct)
 //Returns nil error on success
-func (c *Converter) ConvertAll(parallelComposition bool, synthesis bool) ([]OutputFile, error) {
+func (c *Converter) ConvertAll(serialComposition bool, parallelComposition bool, synthesis bool) ([]OutputFile, error) {
 	finishedConversions := make([]OutputFile, 0, len(c.Funcs))
 
 	type templateInfo struct {
@@ -95,6 +97,11 @@ func (c *Converter) ConvertAll(parallelComposition bool, synthesis bool) ([]Outp
 			fmt.Println("Note: Experimentally compiled as parallel composition for hardware synthesis")
 			templates = []templateInfo{
 				{"parallel_F_", "functionVerilog", "sv"},
+			}
+		} else if serialComposition {
+			fmt.Println("Note: Experimentally compiled as serial composition for hardware synthesis")
+			templates = []templateInfo{
+				{"series_F_", "functionVerilog", "sv"},
 			}
 		} else if synthesis {
 			fmt.Println("Note: Experimentally compiled for hardware synthesis")
