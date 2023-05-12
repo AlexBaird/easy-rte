@@ -74,6 +74,28 @@ make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_8 PARSEARGS=-product COMPILE
 make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_9 PARSEARGS=-product COMPILEARGS=-synthesis
 make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_10 PARSEARGS=-product COMPILEARGS=-synthesis
 
+# Series
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_1_modified COMPILEARGS=-serialComposition
+Printer_3D
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_2_modified COMPILEARGS=-serialComposition
+Printer_3D
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_3_modified COMPILEARGS=-serialComposition
+Printer_3D
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_4_modified COMPILEARGS=-serialComposition
+Printer_3D
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_5_modified COMPILEARGS=-serialComposition
+Printer_3D
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_6_modified COMPILEARGS=-serialComposition
+Printer_3D
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_7_modified COMPILEARGS=-serialComposition
+Printer_3D
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_8_modified COMPILEARGS=-serialComposition
+Printer_3D
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_9_modified COMPILEARGS=-serialComposition
+Printer_3D
+make verilog_enf PROJECT=Printer_3D FILE=Printer_3D_10_modified COMPILEARGS=-serialComposition
+Printer_3D
+
 # Quartus Run
 python3 QuartusRun.py "D:\\github.com\\AlexBaird\\easy-rte-composition\\example" Printer_3D
 
