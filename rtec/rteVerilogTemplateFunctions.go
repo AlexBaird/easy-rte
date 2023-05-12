@@ -238,18 +238,22 @@ func getLastFSMState(policies rtedef.EnforcedFunction) string {
 
 func getFSMCaseStatement(policies rtedef.EnforcedFunction) string {
 	var numStates = getFSMNumStates(policies)
+	// fmt.Println("Number states:", numStates)
 	var width = strconv.Itoa(getFSMStateWidth(policies)) 
 	var caseStatement = ""
-	var numPolicies = len(policies.Policies[0].Name)
+	var numPolicies = len(policies.Policies)
 	var policyCounter = 0
+	// fmt.Println("numPolicies:", strconv.Itoa(numPolicies))
 	for i:=1; i<=numStates; i++ {
+		// fmt.Println("I:", strconv.Itoa(i))
 		caseStatement += width + "'b" + convertToBoolWithWidth(i, getFSMStateWidth(policies)) + ": begin\n\t\t\t\t"
-		if (i <= numPolicies + 1) {
+		if (i <= numPolicies) {
 			// Input Enforcement
 			policyCounter += 1
 			caseStatement += "// Input Enf " + strconv.Itoa(policyCounter) + "\n\t\t\t\t"
+			// fmt.Println("policy counter:", strconv.Itoa(policyCounter-1))
 			caseStatement += "c_in_" + policies.Policies[policyCounter-1].Name + " = 1;\n\t\t\t"
-		} else if (i == numPolicies + 2) {
+		} else if (i == numPolicies + 1) {
 			// Express Input
 			caseStatement += "// Express Input\n\t\t\t\t"
 			for _, input := range policies.InputVars {
@@ -258,12 +262,13 @@ func getFSMCaseStatement(policies rtedef.EnforcedFunction) string {
 			} 
 			caseStatement += "// Controller Runs\n\t\t\t"
 			policyCounter = 0
-		} else if ((i > numPolicies + 2) && (i <= numPolicies*2 + 3)) {
+		} else if ((i > numPolicies + 1) && (i <= numPolicies*2 + 1)) {
 			// Output Enforcement
 			policyCounter += 1
 			caseStatement += "// Output Enf " + strconv.Itoa(policyCounter) + "\n\t\t\t\t"
+			// fmt.Println("policy counter:", strconv.Itoa(policyCounter-1))
 			caseStatement += "c_out_" + policies.Policies[policyCounter-1].Name + " = 1;\n\t\t\t"
-		} else if (i == numPolicies*2 + 4) {
+		} else if (i == numPolicies*2 + 2) {
 			// Express Output
 			caseStatement += "// Express Output\n\t\t\t"
 			for _, output := range policies.OutputVars {
@@ -271,7 +276,7 @@ func getFSMCaseStatement(policies rtedef.EnforcedFunction) string {
 				caseStatement += output.Name + "_trans = " + output.Name + "_ctp_enf;\n\t\t\t\t"
 			} 
 
-		} else if (i == numPolicies*2 + 5) {
+		} else if (i == numPolicies*2 + 3) {
 			// Transition
 			caseStatement += "// Transition\n\t\t\t\t"
 			caseStatement += "c_trans = 1;\n\t\t\t"

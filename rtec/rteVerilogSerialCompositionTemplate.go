@@ -582,7 +582,7 @@ var verilogSerialCompositionTemplateFuncMap = template.FuncMap{
 	"getFSMStateWidth":     			getFSMStateWidth,
 	"getFSMStateWidthDeclareString":    getFSMStateWidthDeclareString,
 	"getFSMCaseStatement":     			getFSMCaseStatement,
-	"getLastFSMState":     			getLastFSMState,
+	"getLastFSMState":     				getLastFSMState,
 
 	"compileExpression": stconverter.VerilogCompileExpression,
 
