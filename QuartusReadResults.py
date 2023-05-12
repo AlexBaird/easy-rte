@@ -121,7 +121,7 @@ def main(baseDir, projectDir):
             staFileName = topLevelName + ".sta.rpt"
             with open(projectDir + "\\" + dir + "\\" + staFileName, "r") as f:
                 line = f.readline()
-                while not line.startswith("; Fmax Summary                                     ;"):
+                while not line.startswith("; Fmax       ; Restricted Fmax"):
                     line = f.readline()
                     if line == "":
                         print("Line not found")
@@ -134,8 +134,6 @@ def main(baseDir, projectDir):
                 # +------------+-----------------+------------+------+
                 # ; 234.25 MHz ; 234.25 MHz      ; clk        ;      ;
                 # +------------+-----------------+------------+------+
-                line = f.readline()
-                line = f.readline()
                 line = f.readline()
                 line = f.readline()
 
