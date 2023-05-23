@@ -163,38 +163,47 @@ func main() {
 		}
 	}
 	
-	fmt.Println("Reading file:", *inFileName)
-	sourceFile2, err := ioutil.ReadFile(*inFileName)
-	if err != nil {
-		fmt.Printf("Error reading file '%s' for conversion: %s\n", *inFileName, err.Error())
-		return
-	}
-	err = conv.AddFunction(sourceFile2)
-	FB2 := rtedef.EnforcedFunction{}
-	if err := xml.Unmarshal(sourceFile2, &FB2); err != nil {
-		errors.New("Couldn't unmarshal EnforcedFunction xml: " + err.Error())
-		return 
-	}
+	//  ---------------------------------------------------------------------------------------
+	//  DEBUGGING AID
+	//  ---------------------------------------------------------------------------------------
+	// 
+	//  This will compute the FB again, all in memory at once. 
+	//  Then compare the strings of FB (gradually) and FB2 (all at once)
+	//  Panic is called if they don't match
+	//
+	// fmt.Println("Reading file:", *inFileName)
+	// sourceFile2, err := ioutil.ReadFile(*inFileName)
+	// if err != nil {
+	// 	fmt.Printf("Error reading file '%s' for conversion: %s\n", *inFileName, err.Error())
+	// 	return
+	// }
+	// err = conv.AddFunction(sourceFile2)
+	// FB2 := rtedef.EnforcedFunction{}
+	// if err := xml.Unmarshal(sourceFile2, &FB2); err != nil {
+	// 	errors.New("Couldn't unmarshal EnforcedFunction xml: " + err.Error())
+	// 	return 
+	// }
 
-	string1 := fmt.Sprintf("%v", FB)
-	string2 := fmt.Sprintf("%v", FB2)
-	if (string1 != string2) {
-		fmt.Println("Two methods for obtaining FB are not equal!")
-		fmt.Println("Piecewise:\n", string1)
-		fmt.Println("All at once:\n", string2)
+	// string1 := fmt.Sprintf("%v", FB)
+	// string2 := fmt.Sprintf("%v", FB2)
+	// if (string1 != string2) {
+	// 	fmt.Println("Two methods for obtaining FB are not equal!")
+	// 	fmt.Println("Piecewise:\n", string1)
+	// 	fmt.Println("All at once:\n", string2)
 
-		differences := ""
-		for i := 0; i < len(string1) && i < len(string2); i++ {
-			if string1[i] != string2[i] {
-				differences += string(string2[i])
-			}
-		}
-
-		fmt.Println("Differences:\n", differences)
-
-		panic("Two methods for obtaining FB are not equal!")
-	}
-
+	// 	differences := ""
+	// 	for i := 0; i < len(string1) && i < len(string2); i++ {
+	// 		if string1[i] != string2[i] {
+	// 			differences += string(string2[i])
+	// 		}
+	// 	}
+		
+	// 	fmt.Println("Differences:\n", differences)
+		
+	// 	panic("Two methods for obtaining FB are not equal!")
+	// }
+	// //  ---------------------------------------------------------------------------------------
+	
 	// conv.Funcs = append(conv.Funcs, FB)
 
 	if err != nil {
