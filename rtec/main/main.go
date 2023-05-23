@@ -205,7 +205,7 @@ func main() {
 	// }
 	// //  ---------------------------------------------------------------------------------------
 	
-	// conv.Funcs = append(conv.Funcs, FB)
+	conv.Funcs = append(conv.Funcs, FB)
 
 	if err != nil {
 		fmt.Printf("Error during adding file '%s' for conversion: %s\n", *inFileName, err.Error())
