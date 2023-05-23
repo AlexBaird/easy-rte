@@ -9,7 +9,6 @@ import (
 	"strings"
 	"github.com/PRETgroup/easy-rte/rtedef"
 	"encoding/xml"
-	"errors"
 	"github.com/PRETgroup/easy-rte/rtec"
 )
 
@@ -163,6 +162,8 @@ func main() {
 		}
 	}
 	
+	sourceFile.Close()
+
 	//  ---------------------------------------------------------------------------------------
 	//  DEBUGGING AID
 	//  ---------------------------------------------------------------------------------------
