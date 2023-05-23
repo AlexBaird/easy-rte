@@ -9,7 +9,7 @@ import (
 	"strings"
 	"github.com/PRETgroup/easy-rte/rtedef"
 	"encoding/xml"
-	// "errors"
+	"errors"
 	"github.com/PRETgroup/easy-rte/rtec"
 )
 
@@ -104,15 +104,11 @@ func main() {
 
 	defer sourceFile.Close()
 
-	const chunkSize = 1024
-
 	decoder := xml.NewDecoder(sourceFile)
-	// buffer := make([]byte, chunkSize)
 
 	FB := rtedef.EnforcedFunction{}
-	fmt.Println((FB))
-	// buffer := make([]byte, chunkSize)
 
+	var currentPolicyIndex = 0
 	for {
 		t, tokenErr := decoder.Token()
 		if tokenErr != nil {
@@ -122,48 +118,82 @@ func main() {
 			// handle error somehow
 			fmt.Errorf("decoding token: %v", err)
 		}
-		// fmt.Println("token:", t)
-		
 		switch t := t.(type) {
 		case xml.StartElement:
-			fmt.Println("start element token:", /*t,*/ t.Name.Local)
 			switch t.Name.Local {
 			case "EnforcedFunction":
 				FB.Name = t.Attr[len(t.Attr)-1].Value
-				fmt.Println("\tFound new function:", FB.Name)
+				// fmt.Println("\tFound new function:", FB.Name)
 			// case "Interface":
 			// 	decoder.DecodeElement(&FB.InterfaceList, &t)
 			// 	fmt.Println("\tFound interface:", FB.InterfaceList.InputVars., FB.OutputVars)
 			case "Input":
 				decoder.DecodeElement(&FB.InputVars, &t)
-				fmt.Println("\tFound input", len(FB.InterfaceList.InputVars), ":", FB.InputVars[len(FB.InputVars)-1].Name)
+				// fmt.Println("\tFound input", len(FB.InterfaceList.InputVars), ":", FB.InputVars[len(FB.InputVars)-1].Name)
 			case "Output":
 				decoder.DecodeElement(&FB.OutputVars, &t)
-				fmt.Println("\tFound output", len(FB.InterfaceList.OutputVars), ":",  FB.OutputVars[len(FB.OutputVars)-1].Name)
+				// fmt.Println("\tFound output", len(FB.InterfaceList.OutputVars), ":",  FB.OutputVars[len(FB.OutputVars)-1].Name)
 			case "Policy":
 				FB.AddPolicy(t.Attr[len(t.Attr)-1].Value)
-				fmt.Println("\tFound policy", len(FB.Policies), ":",  FB.Policies[len(FB.Policies)-1].Name)
+				// fmt.Println("\tFound policy", len(FB.Policies), ":",  FB.Policies[len(FB.Policies)-1].Name)
+				currentPolicyIndex = len(FB.Policies)-1
+			case "InternalVars":
+				var internalVars []rtedef.Variable
+				decoder.DecodeElement(&internalVars, &t)
+				// fmt.Println("Internal vars:", internalVars)
+				if (fmt.Sprintf("%v", internalVars) != "[{  false   }]") {
+					FB.Policies[currentPolicyIndex].InternalVars = internalVars // This may need work to handle empty/false case
+					// fmt.Println("\tFound internal vars for policy",  FB.Policies[currentPolicyIndex].Name, FB.Policies[currentPolicyIndex].InternalVars)
+				}
+			case "PState":
+				var stateName = ""
+				decoder.DecodeElement(&stateName, &t)
+				FB.Policies[currentPolicyIndex].AddState(stateName)
+				// fmt.Println("\tFound PState for policy",  stateName)
+			case "PTransition":
+				var trans rtedef.PTransition 
+				decoder.DecodeElement(&trans, &t)
+				// fmt.Println(trans)
+				FB.Policies[currentPolicyIndex].AddTransitionObj(trans)
+				// fmt.Println("\tFound PState for policy",  stateName)
+			default:
+				fmt.Println("Unhandled start element token:", /*t,*/ t.Name.Local)
 			}
 
-			// if t.Name.Space == "foo" && t.Name.Local == "bar" {
-			// 	var b bar
-			// 	if err := d.DecodeElement(&b, &t); err != nil {
-			// 		// handle error somehow
-			// 		fmt.Errorf("decoding element %q: %v", t.Name.Local, err)
-			// 	}
-			// 	// do something with b
-			// }
 		}
 	}
 	
-	// fmt.Println("Adding function from:", sourceFile)
-	// err = conv.AddFunction(sourceFile)
-	
-	// FB := rtedef.EnforcedFunction{}
-	// if err := xml.Unmarshal(sourceFile, &FB); err != nil {
-	// 	errors.New("Couldn't unmarshal EnforcedFunction xml: " + err.Error())
-	// 	return 
-	// }
+	fmt.Println("Reading file:", *inFileName)
+	sourceFile2, err := ioutil.ReadFile(*inFileName)
+	if err != nil {
+		fmt.Printf("Error reading file '%s' for conversion: %s\n", *inFileName, err.Error())
+		return
+	}
+	err = conv.AddFunction(sourceFile2)
+	FB2 := rtedef.EnforcedFunction{}
+	if err := xml.Unmarshal(sourceFile2, &FB2); err != nil {
+		errors.New("Couldn't unmarshal EnforcedFunction xml: " + err.Error())
+		return 
+	}
+
+	string1 := fmt.Sprintf("%v", FB)
+	string2 := fmt.Sprintf("%v", FB2)
+	if (string1 != string2) {
+		fmt.Println("Two methods for obtaining FB are not equal!")
+		fmt.Println("Piecewise:\n", string1)
+		fmt.Println("All at once:\n", string2)
+
+		differences := ""
+		for i := 0; i < len(string1) && i < len(string2); i++ {
+			if string1[i] != string2[i] {
+				differences += string(string2[i])
+			}
+		}
+
+		fmt.Println("Differences:\n", differences)
+
+		panic("Two methods for obtaining FB are not equal!")
+	}
 
 	// conv.Funcs = append(conv.Funcs, FB)
 
