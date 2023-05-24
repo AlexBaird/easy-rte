@@ -118,9 +118,11 @@ func (c *Converter) ConvertAll(serialComposition bool, parallelComposition bool,
 		for i := 0; i < len(c.Funcs); i++ {
 
 			output := &bytes.Buffer{}
+			fmt.Println("Right before where something i think long running lives")
 			if err := c.templates.ExecuteTemplate(output, template.Name, TemplateData{FunctionIndex: i, Functions: c.Funcs}); err != nil {
 				return nil, errors.New("Couldn't format template (fb) of" + c.Funcs[i].Name + ": " + err.Error())
 			}
+			fmt.Println("Right after it")
 
 			finishedConversions = append(finishedConversions, OutputFile{Name: template.Prefix + c.Funcs[i].Name, Extension: template.Extension, Contents: output.Bytes()})
 		}

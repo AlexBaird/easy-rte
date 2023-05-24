@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"github.com/PRETgroup/easy-rte/rtedef"
+	"github.com/AlexBaird/easy-rte-composition/rtedef"
 	"encoding/xml"
 	"github.com/PRETgroup/easy-rte/rtec"
 )
@@ -206,12 +206,14 @@ func main() {
 	// //  ---------------------------------------------------------------------------------------
 	
 	conv.Funcs = append(conv.Funcs, FB)
-
+	
 	if err != nil {
 		fmt.Printf("Error during adding file '%s' for conversion: %s\n", *inFileName, err.Error())
 		return
 	}
-
+	
+	// This thing is taking a long time
+	// TODO: Figure out why, and make it incremental/sequental/faster!~
 	outputs, err := conv.ConvertAll(*serialComposition, *parallelComposition, *synthesis)
 	if err != nil {
 		fmt.Println("Error during conversion:", err.Error())
