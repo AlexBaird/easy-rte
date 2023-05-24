@@ -1,32 +1,45 @@
 function abcd;
 interface of abcd {
 	in bool A;  
-	in bool B;  
-	in bool C;  
+	out bool B;  
+	out bool C;  
 	out bool D;  
 }
 
-policy a of abcd {
+// On A, each policy is responsible for ensuring output (B, C, or D) is emitted
+
+policy ab of abcd {
 	states {
-		s0 {
-			-> s0 on (!A);
-			-> violation on (A) recover A := 0;	
+		b0 {
+			-> b0 on (!A and !B) or (A and B);
+			//-> violation on (A and !B and C and D) or (A and !B and !C and D) or (A and !B and C and !D) or (A and !B and !C and !D) recover B := 1;	
+			//-> violation on (!A and B and C and D) or (!A and B and !C and D) or (!A and B and C and !D) or (!A and B and !C and !D) recover B := 0;	
+			// Combine two violation transitions into one for compilation simplicity
+			-> violation on (A and !B and C and D) or (A and !B and !C and D) or (A and !B and C and !D) or (A and !B and !C and !D) or (!A and B and C and D) or (!A and B and !C and D) or (!A and B and C and !D) or (!A and B and !C and !D);	
 		}
 	}
 }
-policy b of abcd {
+policy ac of abcd {
 	states {
-		s0 {
-			-> s0 on (!B);
-			-> violation on (B) recover B := 0;	
+		c0 {
+			-> c0 on (!A and !C) or (A and C);
+			//-> violation on (A and !C and B and D) or (A and !C and !B and D) or (A and !C and B and !D) or (A and !C and !B and !D) recover C := 1;	
+			//-> violation on (!A and C and B and D) or (!A and C and !B and D) or (!A and C and B and !D) or (!A and C and !B and !D) recover C := 0;
+
+			// Combine two violation transitions into one for compilation simplicity
+			-> violation on (A and !C and B and D) or (A and !C and !B and D) or (A and !C and B and !D) or (A and !C and !B and !D) or (!A and C and B and D) or (!A and C and !B and D) or (!A and C and B and !D) or (!A and C and !B and !D);
 		}
 	}
 }
-policy c of abcd {
+policy ad of abcd {
 	states {
-		s0 {
-			-> s0 on (!C);
-			-> violation on (C) recover C := 0;	
+		d0 {
+			-> d0 on (!A and !D) or (A and D);
+			//-> violation on (A and !D and B and C) or (A and !D and !B and C) or (A and !D and B and !C) or (A and !D and !B and !C) recover D := 1;	
+			//-> violation on (!A and D and B and C) or (!A and D and !B and C) or (!A and D and B and !C) or (!A and D and !B and !C) recover D := 0;	
+
+			// Combine two violation transitions into one for compilation simplicity
+			-> violation on (A and !D and B and C) or (A and !D and !B and C) or (A and !D and B and !C) or (A and !D and !B and !C) or (!A and D and B and C) or (!A and D and !B and C) or (!A and D and B and !C) or (!A and D and !B and !C);
 		}
 	}
 }

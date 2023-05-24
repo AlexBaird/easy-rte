@@ -304,8 +304,9 @@ module F_LUT_Output_Edit (
 		input wire clk
 	);
 
-	{{range $index, $var := $block.InputVars}}reg {{$var.Name}} = 0;{{end}}
-	{{range $index, $var := $block.OutputVars}}reg {{$var.Name}} = 0;{{end}}
+	{{range $index, $var := $block.InputVars}}reg {{$var.Name}} = 0;
+	{{end}}{{range $index, $var := $block.OutputVars}}reg {{$var.Name}} = 0;
+	{{end}}
 	
 	//initial begin
 		{{range $index, $var := $block.InputVars}}// {{$var.Name}}_ptc_out = 0;{{end}}
@@ -314,6 +315,11 @@ module F_LUT_Output_Edit (
 
 	// LUT
 	always @(posedge clk) begin
+		// Default to original signal (to preserve transparency)
+		{{range $index, $var := $block.InputVars}}{{$var.Name}} = {{$var.Name}}_ptc_in;
+		{{end}}{{range $index, $var := $block.OutputVars}}{{$var.Name}} = {{$var.Name}}_ctp_in;
+		{{end}}
+
 		case({ {{range $polI, $pol := $block.Policies}}{{if not (equal $polI 0)}}, {{end}}{{$block.Name}}_policy_{{$pol.Name}}_output_recovery_ref{{end}} }) 
 			{{getLUT $block.Name}}
 			default: begin {{range $index, $var := $block.InputVars}}
@@ -361,8 +367,11 @@ module parallel_sim_FSM ({{range $index, $var := $block.InputVars}}
 	{{end}}
 	always @(posedge clk)
 	begin{{range $index, $var := $block.InputVars}}
-		{{$var.Name}}_enf = 0;{{end}}{{range $index, $var := $block.OutputVars}}
 		{{$var.Name}}_enf = 0;
+		{{$var.Name}}_trans = 0;
+		{{end}}{{range $index, $var := $block.OutputVars}}
+		{{$var.Name}}_enf = 0;
+		{{$var.Name}}_trans = 0;
 		{{end}}
 		c_in = 0;
 		c_out = 0;
@@ -382,8 +391,10 @@ module parallel_sim_FSM ({{range $index, $var := $block.InputVars}}
 		end
 		3'b010: begin
 			// Express Input 
-			A_enf = A_ptc_enf;
-			A_trans = A_ptc_enf;
+			{{range $index, $var := $block.InputVars}}
+			{{$var.Name}}_enf = {{$var.Name}}_ptc_enf;
+			{{$var.Name}}_trans = {{$var.Name}}_ptc_enf;{{end}}
+
 			// Controller
 		end
 		3'b011: begin
@@ -392,8 +403,10 @@ module parallel_sim_FSM ({{range $index, $var := $block.InputVars}}
 		end
 		3'b100: begin
 			// Express Output
-			B_enf = B_ctp_enf;
-			B_trans = B_ctp_enf;
+			{{range $index, $var := $block.OutputVars}}
+			{{$var.Name}}_enf = {{$var.Name}}_ctp_enf;
+			{{$var.Name}}_trans = {{$var.Name}}_ctp_enf;{{end}}
+
 		end
 		3'b101: begin
 			// Transition

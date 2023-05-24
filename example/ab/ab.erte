@@ -8,20 +8,20 @@ policy a of ab {
 	states {
 
 		a0 {
-			-> a0 on (!A);
-			-> a2 on (A);
+			-> a0 on ((!A and B) or (!A and !B));
+			-> a2 on ((A and B) or (A and !B));
 		}
 
 		a1 {
-			-> a2 on (A);
+			-> a2 on ((A and B) or (A and !B));
 
-			-> violation on (!A) recover A := 1;	
+			-> violation on ((!A and B) or (!A and !B)) recover A := 1;	
 		}
 
 		a2 {
-			-> a1 on (!A);
+			-> a1 on ((!A and B) or (!A and !B));
 
-			-> violation on (A) recover A := 0;	
+			-> violation on ((A and B) or (A and !B)) recover A := 0;	
 		}
 	}
 }
@@ -30,21 +30,32 @@ policy b of ab {
 	states {
 
 		b0 {
-			-> b0 on (!B);
-			-> b2 on (B);
+			-> b0 on ((A and !B) or (!A and !B));
+			-> b2 on ((A and B) or (!A and B));
 		}
 
 		b1 {
-			-> b2 on (B);
+			-> b2 on ((A and B) or (!A and B));
 
-			-> violation on (!B) recover B := 1;	
+			-> violation on ((A and !B) or (!A and !B)) recover B := 1;	
 		}
 
 		b2 {
-			-> b1 on (!B);
+			-> b1 on ((A and !B) or (!A and !B));
 
-			-> violation on (B) recover B := 0;	
+			-> violation on ((A and B) or (!A and B)) recover B := 0;	
 		}
 
+	}
+}
+
+policy c of ab {
+	states {
+		c0 {
+			-> c1 on ((A and !B) or (!A and !B)) or ((A and B) or (!A and B));
+		}
+		c1 {
+			-> c0 on ((A and !B) or (!A and !B)) or ((A and B) or (!A and B));
+		}
 	}
 }

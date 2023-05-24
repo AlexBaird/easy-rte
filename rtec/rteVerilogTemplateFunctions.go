@@ -1,10 +1,12 @@
 package rtec
 
 import (
+	"bufio"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/PRETgroup/easy-rte/rtedef"
@@ -79,7 +81,7 @@ type Row struct {
 	// XMLName			xml.Name	`xml:"Row"`
 	Recovery    string    `xml:"Recovery"`
 	RecoveryKey string    `xml:"RecoveryKey"`
-	Recovers     []Recover `xml:"Recover"`
+	Recovers    []Recover `xml:"Recover"`
 }
 
 type SelectLUT struct {
@@ -96,8 +98,18 @@ type EnforcedFunction struct {
 func boolStrToIntStr(boolStr string) string {
 	if boolStr == "True" {
 		return "1"
-	} else {
+	} else if boolStr == "False" {
 		return "0"
+	} else {
+		return ""
+	}
+}
+
+func isNone(boolStr string) bool {
+	if boolStr == "None" {
+		return true
+	} else {
+		return false
 	}
 }
 
@@ -106,45 +118,65 @@ func getLUT(blockName string) string {
 	fmt.Println(filename)
 
 	// Open our xmlFile
-	xmlFile, err := os.Open(filename)
+	xmlFile2, err2 := os.Open(filename)
 	// if we os.Open returns an error then handle it
+	if err2 != nil {
+		fmt.Println("\nError:", err2)
+		fmt.Println("\nCommonly projects have a different [Folder] and [Blockname].")
+		fmt.Println("\texample/[Folder]/[Blockname]_modified.xml")
+		fmt.Println("If your [Folder] != [Blockname] please enter a new [Folder] name here (followed by Enter/Return key):")
+		reader := bufio.NewReader(os.Stdin)
+		// ReadString will block until the delimiter is entered
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("An error occurred while reading input. Please try again", err)
+			return "error"
+		}
+		input = strings.TrimSuffix(input, "\n")
+		filename = "example/" + input + "/" + blockName + "_modified.xml"
+		fmt.Println("You gave me:", input)
+		fmt.Println("New filename:", filename)
+	}
+	xmlFile2.Close()
+
+	xmlFile, err := os.Open(filename)
 	if err != nil {
-		fmt.Println(err)
 		return "error"
-	} else {
+	}
 
-		fmt.Println("Successfully Opened " + filename)
-		// defer the closing of our xmlFile so that we can parse it later on
-		defer xmlFile.Close()
+	fmt.Println("Successfully Opened " + filename)
+	// defer the closing of our xmlFile so that we can parse it later on
+	defer xmlFile.Close()
 
-		// read our opened xmlFile as a byte array.
-		byteValue, _ := ioutil.ReadAll(xmlFile)
+	// read our opened xmlFile as a byte array.
+	byteValue, _ := ioutil.ReadAll(xmlFile)
 
-		var q EnforcedFunction
+	var q EnforcedFunction
 
-		xml.Unmarshal(byteValue, &q)
+	xml.Unmarshal(byteValue, &q)
 
-		// fmt.Println(q)
-		// fmt.Println(q.LUT)
-		// fmt.Println(q.LUT.Rows)
+	// fmt.Println(q)
+	// fmt.Println(q.LUT)
+	// fmt.Println(q.LUT.Rows)
 
-		// TODO: For each row
-		// Add to case statement!
-		var caseStatement string = ""
-		for i, row := range q.LUT.Rows {
-			if i != 0 {
-				caseStatement += "\t\t\t"
-			}
-			caseStatement += fmt.Sprint(len(row.RecoveryKey)) + "'b" + row.RecoveryKey + ": begin\n"
-			for _, signal := range row.Recovers {
+	// For each row
+	// Add to case statement!
+	var caseStatement string = ""
+	for i, row := range q.LUT.Rows {
+		if i != 0 {
+			caseStatement += "\t\t\t"
+		}
+		caseStatement += fmt.Sprint(len(row.RecoveryKey)) + "'b" + row.RecoveryKey + ": begin\n"
+		for _, signal := range row.Recovers {
+			if (!isNone(signal.Value)) {
 				caseStatement += "\t\t\t\t" + signal.Signal + " = " + boolStrToIntStr(signal.Value) + ";\n"
 			}
-			caseStatement += "\t\t\t\tend\n"
 		}
-		fmt.Println(caseStatement)
-
-		return caseStatement
+		caseStatement += "\t\t\t\tend\n"
 	}
+	fmt.Println(caseStatement)
+
+	return caseStatement
 }
 
 func getMaxRecoveryReference(policy rtedef.Policy) int {
@@ -156,7 +188,7 @@ func getMaxRecoveryReference(policy rtedef.Policy) int {
 	}
 	// fmt.Println(maxRecoveryRef)
 
-	return int(maxRecoveryRef)+1 // Quick fix for getVerilogWidthArray not working quite as expected
+	return int(maxRecoveryRef) + 1 // Quick fix for getVerilogWidthArray not working quite as expected
 }
 
 func add1IfClock(ctype string) string {
@@ -175,6 +207,84 @@ func getVerilogWidthArray(l int) string {
 		return fmt.Sprintf("[%v:0]", cl2)
 	}
 	return ""
+}
+
+
+func getLastPolicy(policies rtedef.EnforcedFunction) string {
+	return (policies.Policies[len(policies.Policies)-1].Name)
+}
+
+func getFSMNumStates(policies rtedef.EnforcedFunction) int{
+	return 5+2*(len(policies.Policies)-1);
+}
+
+func getFSMStateWidth(policies rtedef.EnforcedFunction) int {
+	var numStates = getFSMNumStates(policies)
+	return ceilLog2(uint64(numStates))
+}
+
+func getFSMStateWidthDeclareString(policies rtedef.EnforcedFunction) string {
+	var numStates = getFSMNumStates(policies)
+	return getVerilogWidthArray(numStates)
+}
+
+func convertToBoolWithWidth(i int, width int) string {
+	return fmt.Sprintf("%0" + strconv.Itoa(width) + "b", i)
+}
+
+func getLastFSMState(policies rtedef.EnforcedFunction) string {
+	return strconv.Itoa(getFSMStateWidth(policies)) + "'b" + convertToBoolWithWidth(getFSMNumStates(policies), getFSMStateWidth(policies))
+}
+
+func getFSMCaseStatement(policies rtedef.EnforcedFunction) string {
+	var numStates = getFSMNumStates(policies)
+	// fmt.Println("Number states:", numStates)
+	var width = strconv.Itoa(getFSMStateWidth(policies)) 
+	var caseStatement = ""
+	var numPolicies = len(policies.Policies)
+	var policyCounter = 0
+	// fmt.Println("numPolicies:", strconv.Itoa(numPolicies))
+	for i:=1; i<=numStates; i++ {
+		// fmt.Println("I:", strconv.Itoa(i))
+		caseStatement += width + "'b" + convertToBoolWithWidth(i, getFSMStateWidth(policies)) + ": begin\n\t\t\t\t"
+		if (i <= numPolicies) {
+			// Input Enforcement
+			policyCounter += 1
+			caseStatement += "// Input Enf " + strconv.Itoa(policyCounter) + "\n\t\t\t\t"
+			// fmt.Println("policy counter:", strconv.Itoa(policyCounter-1))
+			caseStatement += "c_in_" + policies.Policies[policyCounter-1].Name + " = 1;\n\t\t\t"
+		} else if (i == numPolicies + 1) {
+			// Express Input
+			caseStatement += "// Express Input\n\t\t\t\t"
+			for _, input := range policies.InputVars {
+				caseStatement += input.Name + "_enf = " + input.Name + "_ptc_enf;\n\t\t\t\t"
+				caseStatement += input.Name + "_trans = " + input.Name + "_ptc_enf;\n\t\t\t\t"
+			} 
+			caseStatement += "// Controller Runs\n\t\t\t"
+			policyCounter = 0
+		} else if ((i > numPolicies + 1) && (i <= numPolicies*2 + 1)) {
+			// Output Enforcement
+			policyCounter += 1
+			caseStatement += "// Output Enf " + strconv.Itoa(policyCounter) + "\n\t\t\t\t"
+			// fmt.Println("policy counter:", strconv.Itoa(policyCounter-1))
+			caseStatement += "c_out_" + policies.Policies[policyCounter-1].Name + " = 1;\n\t\t\t"
+		} else if (i == numPolicies*2 + 2) {
+			// Express Output
+			caseStatement += "// Express Output\n\t\t\t"
+			for _, output := range policies.OutputVars {
+				caseStatement += output.Name + "_enf = " + output.Name + "_ctp_enf;\n\t\t\t\t"
+				caseStatement += output.Name + "_trans = " + output.Name + "_ctp_enf;\n\t\t\t\t"
+			} 
+
+		} else if (i == numPolicies*2 + 3) {
+			// Transition
+			caseStatement += "// Transition\n\t\t\t\t"
+			caseStatement += "c_trans = 1;\n\t\t\t"
+		}
+		caseStatement += "end\n\t\t\t"
+	}
+
+	return caseStatement
 }
 
 var t = [6]uint64{

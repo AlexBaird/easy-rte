@@ -32,20 +32,20 @@ comp: $(PROJECT)_COMP
 
 easy-rte-c: rtec/* rtedef/*
 	go get github.com/PRETgroup/goFB/goFB
-	go build -o easy-rte-c -i ./rtec/main
+	go build -o easy-rte-c ./rtec/main
 
 easy-rte-c-local: rtec/* rtedef/*
-	go build -o easy-rte-c -i ./rtec/main
+	go build -o easy-rte-c ./rtec/main
 
 easy-rte-parser: rteparser/* rtedef/*
 	go get github.com/PRETgroup/goFB/goFB
-	go build -o easy-rte-parser -i ./rteparser/main
+	go build -o easy-rte-parser ./rteparser/main
 
 easy-rte-parser-local: rteparser/* rtedef/*
-	go build -o easy-rte-parser -i ./rteparser/main
+	go build -o easy-rte-parser ./rteparser/main
 
 easy-rte-comp: rtecomp/*
-	go build -o easy-rte-comp -i ./rtecomp
+	go build -o easy-rte-comp ./rtecomp
 
 run_cbmc: default 
 	cbmc example/$(PROJECT)/cbmc_main_$(PROJECT).c example/$(PROJECT)/F_$(PROJECT).c

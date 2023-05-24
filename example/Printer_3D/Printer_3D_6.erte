@@ -1,0 +1,126 @@
+function Printer_3D_6;
+interface of Printer_3D_6 {
+	in bool MAX_TEMP_HOTEND;
+	in bool MAX_TEMP_HEATBREAK;
+	in bool MAX_TEMP_HEATBED;
+	in bool MAX_TEMP_AMBIENT;
+	in bool MAX_CURRENT_HOTEND;
+	in bool MAX_CURRENT_HEATBED;
+
+	in bool STALL_AXIS_X;
+	in bool STALL_AXIS_Y;
+	in bool STALL_AXIS_Z;
+	in bool STALL_AXIS_E;
+	
+	in bool RESET;
+
+	out bool EN_HEAT_HOTEND;
+	out bool EN_HEAT_HEATBED;
+
+	out bool EN_MOTOR_X;
+	out bool EN_MOTOR_Y;
+	out bool EN_MOTOR_Z;
+	out bool EN_MOTOR_E;
+}
+
+policy PROTECT_THERMAL_HOTEND of Printer_3D_6 {
+	states {
+
+		l0 {
+			-> l0 on (RESET);
+			-> l1 on (!RESET);
+		}
+
+		l1 {
+			-> l0 on (RESET);
+			-> l1 on (EN_HEAT_HOTEND and !MAX_TEMP_HOTEND) or (!EN_HEAT_HOTEND and !MAX_TEMP_HOTEND) or (!EN_HEAT_HOTEND and MAX_TEMP_HOTEND);
+			-> violation on (EN_HEAT_HOTEND and MAX_TEMP_HOTEND) recover EN_HEAT_HOTEND := 0;	
+		}
+	}
+}
+
+policy PROTECT_THERMAL_HEATBED of Printer_3D_6 {
+	states {
+
+		l0 {
+			-> l0 on (RESET);
+			-> l1 on (!RESET);
+		}
+
+		l1 {
+			-> l0 on (RESET);
+			-> l1 on (EN_HEAT_HEATBED and !MAX_TEMP_HEATBED) or (!EN_HEAT_HEATBED and !MAX_TEMP_HEATBED) or (!EN_HEAT_HEATBED and MAX_TEMP_HEATBED);
+			-> violation on (EN_HEAT_HEATBED and MAX_TEMP_HEATBED) recover EN_HEAT_HEATBED := 0;	
+		}
+	}
+}
+
+policy PROTECT_THERMAL_HEATBREAK of Printer_3D_6 {
+	states {
+
+		l0 {
+			-> l0 on (RESET);
+			-> l1 on (!RESET);
+		}
+
+		l1 {
+			-> l0 on (RESET);
+			-> l1 on (EN_HEAT_HOTEND and !MAX_TEMP_HEATBREAK) or (!EN_HEAT_HOTEND and !MAX_TEMP_HEATBREAK) or (!EN_HEAT_HOTEND and MAX_TEMP_HEATBREAK);
+			-> violation on (EN_HEAT_HOTEND and MAX_TEMP_HEATBREAK) recover EN_HEAT_HOTEND := 0;	
+		}
+	}
+}
+
+policy PROTECT_THERMAL_AMBIENT of Printer_3D_6 {
+	states {
+
+		l0 {
+			-> l0 on (RESET);
+			-> l1 on (!RESET);
+		}
+
+		l1 {
+			-> l0 on (RESET);
+			-> l1 on ((EN_HEAT_HEATBED and EN_HEAT_HOTEND and !MAX_TEMP_AMBIENT) or (EN_HEAT_HEATBED and !EN_HEAT_HOTEND and !MAX_TEMP_AMBIENT) or (EN_HEAT_HEATBED and !EN_HEAT_HOTEND and MAX_TEMP_AMBIENT) or (!EN_HEAT_HEATBED and EN_HEAT_HOTEND and !MAX_TEMP_AMBIENT) or (!EN_HEAT_HEATBED and !EN_HEAT_HOTEND and !MAX_TEMP_AMBIENT) or (!EN_HEAT_HEATBED and !EN_HEAT_HOTEND and MAX_TEMP_AMBIENT));
+			-> violation on ((EN_HEAT_HEATBED and EN_HEAT_HOTEND) and MAX_TEMP_AMBIENT) or ((!EN_HEAT_HEATBED and EN_HEAT_HOTEND) and MAX_TEMP_AMBIENT) or ((EN_HEAT_HEATBED and !EN_HEAT_HOTEND) and MAX_TEMP_AMBIENT);	
+			//-> violation on ((!EN_HEAT_HEATBED and EN_HEAT_HOTEND) and MAX_TEMP_AMBIENT);	
+			//-> violation on ((EN_HEAT_HEATBED and !EN_HEAT_HOTEND) and MAX_TEMP_AMBIENT);	
+		}
+	}
+}
+
+policy PROTECT_CURRENT_HOTEND of Printer_3D_6 {
+	states {
+
+		l0 {
+			-> l0 on (RESET);
+			-> l1 on (!RESET);
+		}
+
+		l1 {
+			-> l0 on (RESET);
+			-> l1 on (EN_HEAT_HOTEND and !MAX_CURRENT_HOTEND);
+			-> l1 on (!EN_HEAT_HOTEND and !MAX_CURRENT_HOTEND);
+			-> l1 on (!EN_HEAT_HOTEND and MAX_CURRENT_HOTEND);
+			-> violation on (EN_HEAT_HOTEND and MAX_CURRENT_HOTEND);	
+		}
+	}
+}
+
+policy PROTECT_CURRENT_HEATBED of Printer_3D_6 {
+	states {
+
+		l0 {
+			-> l0 on (RESET);
+			-> l1 on (!RESET);
+		}
+
+		l1 {
+			-> l0 on (RESET);
+			-> l1 on (EN_HEAT_HEATBED and !MAX_CURRENT_HEATBED);
+			-> l1 on (!EN_HEAT_HEATBED and !MAX_CURRENT_HEATBED);
+			-> l1 on (!EN_HEAT_HEATBED and MAX_CURRENT_HEATBED);
+			-> violation on (EN_HEAT_HEATBED and MAX_CURRENT_HEATBED);	
+		}
+	}
+}
