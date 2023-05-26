@@ -252,13 +252,13 @@ func (enf *PEnforcer) SolveViolationTransition(tr PSTTransition, inputPolicy boo
 		return enf.ReturnManualRecovery(tr, inputPolicy)
 	}
 
-	fmt.Printf("Automatically deriving a solution for violation transition \r\n\t%s -> %s on (%s)\r\n\t(If this is undesirable behaviour, use a 'recover' keyword in the erte file to manually specify solution)\r\n", tr.Source, tr.Destination, stconverter.CCompileExpression(tr.STGuard))
+	// fmt.Printf("Automatically deriving a solution for violation transition \r\n\t%s -> %s on (%s)\r\n\t(If this is undesirable behaviour, use a 'recover' keyword in the erte file to manually specify solution)\r\n", tr.Source, tr.Destination, stconverter.CCompileExpression(tr.STGuard))
 
 	//2. Select first solution
 	posSolTr := posSolTrs[0]
 	solutions := SolveSTExpression(enf.interfaceList, inputPolicy, tr, posSolTr.STGuard)
 	if solutions == nil {
-		fmt.Printf("\tNOTE: (Guess) Solution found with no edits required! (I think the input policy has solved this transition already)\r\n")
+		// fmt.Printf("\tNOTE: (Guess) Solution found with no edits required! (I think the input policy has solved this transition already)\r\n")
 		return STExpressionSolution{Expressions: nil, Comment: fmt.Sprintf("Selected non-violation transition \"%s -> %s on %s\" and action was not required", posSolTr.Source, posSolTr.Destination, posSolTr.Condition)}
 	}
 
@@ -267,8 +267,8 @@ func (enf *PEnforcer) SolveViolationTransition(tr PSTTransition, inputPolicy boo
 	// 	solutionExpressions[i] = stconverter.CCompileExpression(soln)
 	// }
 
-	fmt.Printf("\tNOTE: (Guess) Solution found, and edits required! (I have selected a safe transition, and edited the I/O so that it can be taken)\r\n\tSelected transition: \"%s -> %s on %s\"\r\n", posSolTr.Source, posSolTr.Destination, posSolTr.Condition)
-	fmt.Printf("\tNOTE: I will perform the following edits:\r\n")
+	// fmt.Printf("\tNOTE: (Guess) Solution found, and edits required! (I have selected a safe transition, and edited the I/O so that it can be taken)\r\n\tSelected transition: \"%s -> %s on %s\"\r\n", posSolTr.Source, posSolTr.Destination, posSolTr.Condition)
+	// fmt.Printf("\tNOTE: I will perform the following edits:\r\n")
 	for _, solnE := range solutions {
 		fmt.Printf("\t\t%s;\r\n", stconverter.STCompileExpression(solnE))
 	}

@@ -31,3 +31,7 @@ example/*/*
 !*.md
 
 cpu_time_charts.xlsx
+rtec/profiling/*/*.pdf
+rtec/profiling/*.pdf
+rtec/profiling/*/*.txt
+rtec/profiling/*.txt

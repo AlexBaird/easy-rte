@@ -9,6 +9,8 @@ import (
 	"github.com/PRETgroup/easy-rte/rtedef"
 
 	"github.com/PRETgroup/easy-rte/rteparser"
+
+	"github.com/pkg/profile"
 )
 
 var (
@@ -27,6 +29,9 @@ var (
 )
 
 func main() {
+	defer profile.Start().Stop() // CPU PROFILING
+	// defer profile.Start(profile.MemProfile).Stop() // MEMORY PROFILING
+
 	flag.Parse()
 
 	if *inFileName == "" {
