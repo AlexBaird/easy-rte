@@ -860,7 +860,7 @@ def main(dir, file):
         else:
             randInt = 0
 
-        print("\t - Found " + str(numAccTrans) + " accepting solutions. Picked index " + str(randInt))
+        # print("\t - Found " + str(numAccTrans) + " accepting solutions. Picked index " + str(randInt))
         # randKey = list(accepting.keys())[randInt]
         # randKey = accepting[randInt]
         randKey = list(accepting[randInt]["bool"].keys())[0]

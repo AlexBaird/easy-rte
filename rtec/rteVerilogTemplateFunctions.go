@@ -174,7 +174,7 @@ func getLUT(blockName string) string {
 		}
 		caseStatement += "\t\t\t\tend\n"
 	}
-	fmt.Println(caseStatement)
+	// fmt.Println(caseStatement)
 
 	return caseStatement
 }
