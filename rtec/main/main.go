@@ -1,14 +1,14 @@
 package main
 
 import (
-	"encoding/xml"
+	// "encoding/xml"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/PRETgroup/easy-rte/rtedef"
+	// "github.com/PRETgroup/easy-rte/rtedef"
 
 	"github.com/PRETgroup/easy-rte/rtec"
 	
